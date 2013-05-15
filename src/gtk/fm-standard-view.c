@@ -39,7 +39,7 @@
 #include <glib/gi18n-lib.h>
 #include "gtk-compat.h"
 
-#include "fm.h"
+#include <libsmfm/fm.h>
 #include "fm-standard-view.h"
 #include "fm-gtk-marshal.h"
 #include "fm-cell-renderer-text.h"

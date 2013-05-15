@@ -24,7 +24,7 @@
 #define __FM_DND_SRC_H__
 
 #include <gtk/gtk.h>
-#include "fm-file-info.h"
+#include <libsmfm/fm-file-info.h>
 
 G_BEGIN_DECLS
 

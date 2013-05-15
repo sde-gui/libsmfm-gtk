@@ -38,9 +38,9 @@
 
 #include <glib/gi18n-lib.h>
 #include "fm-places-view.h"
-#include "fm-config.h"
+#include <libsmfm/fm-config.h>
 #include "fm-gtk-utils.h"
-#include "fm-bookmarks.h"
+#include <libsmfm/fm-bookmarks.h>
 #include "fm-file-menu.h"
 #include "fm-cell-renderer-pixbuf.h"
 #include "fm-dnd-auto-scroll.h"

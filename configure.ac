@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([libsmfm], [1.2.0-alpha1], [http://])
+AC_INIT([libsmfm-gtk], [1.2.0-alpha1], [http://])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_MACRO_DIR(m4)
 AC_CONFIG_HEADERS([config.h])
@@ -17,6 +17,11 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_CC
 AM_PROG_CC_C_O
 AM_PROG_LIBTOOL
+
+# libsmfm
+PKG_CHECK_MODULES(LIBSMFM, "libsmfm")
+AC_SUBST(LIBSMFM_CFLAGS)
+AC_SUBST(LIBSMFM_LIBS)
 
 # Vala
 AC_ARG_ENABLE(actions,
@@ -144,58 +149,7 @@ LIBS="${LIBS} ${MENU_CACHE_LIBS}"
 AC_CHECK_FUNCS(menu_cache_dir_list_children)
 LIBS="${LIBS_save}"
 
-# special checks for glib/gio 2.27 since it contains backward imcompatible changes.
-# glib 2.26 uses G_DESKTOP_APP_INFO_LOOKUP_EXTENSION_POINT_NAME extension point while
-# glib 2.27 uses x-scheme-handler/* mime-type to register handlers.
-PKG_CHECK_MODULES(GLIB2_27, [glib-2.0 >= 2.27.0],
-    [have_scheme_handler="yes"],
-    [have_scheme_handler="no"])
-AM_CONDITIONAL(HAVE_SCHEME_HANDLER, test "x$have_scheme_handler" = "xyes")
-if test "x$have_scheme_handler" = "xyes"; then
-    AC_DEFINE_UNQUOTED(HAVE_SCHEME_HANDLER, [1], [Have x-scheme/uri handler support])
-fi
-
 #optional features
-
-AC_ARG_ENABLE(udisks,
-    [AC_HELP_STRING([--enable-udisks],
-        [build libsmfm with udisks support (Linux only) @<:@default=yes@:>@])],
-    [enable_udisks="${enableval}"],
-    [enable_udisks=no]
-)
-AM_CONDITIONAL(ENABLE_UDISKS, test x"$enable_udisks" = x"yes")
-if test x"$enable_udisks" = x"yes"; then
-    # turn on udisks support
-    AC_DEFINE_UNQUOTED(USE_UDISKS, [1], [Enable UDisks support])
-
-    # test for availability of dbus
-    dbus_modules="dbus-glib-1"
-    PKG_CHECK_MODULES(DBUS, [$dbus_modules])
-    AC_SUBST(DBUS_CFLAGS)
-    AC_SUBST(DBUS_LIBS)
-fi
-
-AC_ARG_ENABLE([exif],
-    AS_HELP_STRING([--disable-exif],
-        [disable libexif which is used for faster thumbnail loading.]),
-    [enable_exif="${enableval}"],
-    [enable_exif=auto]
-)
-AM_CONDITIONAL(ENABLE_EXIF, test x"$enable_exif" != x"no")
-AS_IF([test x"$enable_exif" != x"no"], [
-    # test for availability of libexif
-    exif_modules="libexif"
-    PKG_CHECK_MODULES(EXIF, [$exif_modules],
-        [# turn on libexif support
-        enable_exif=yes
-        AC_DEFINE_UNQUOTED(USE_EXIF, [1], [Enable libexif])
-        AC_SUBST(EXIF_CFLAGS)
-        AC_SUBST(EXIF_LIBS)],
-        [AS_IF([test x"$enable_exif" = x"auto"], [enable_exif=no], [
-            AC_ERROR([Package requirements (libexif) were not met:
-
-$EXIF_PKG_ERRORS
-])])])])
 
 #check for gtk-doc
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
@@ -208,12 +162,7 @@ AC_ARG_ENABLE(demo,
 )
 AM_CONDITIONAL(ENABLE_DEMO, test x"$enable_demo" = x"yes")
 
-# GIO extension module
-giomodulesdir=$libdir/gio/modules
-AC_SUBST(giomodulesdir)
-
-
-GETTEXT_PACKAGE=libsmfm
+GETTEXT_PACKAGE=libsmfm-gtk
 AC_SUBST(GETTEXT_PACKAGE)
 
 # Generate po/LINGUAS on the fly rather than relying on translators
@@ -278,8 +227,6 @@ AC_CONFIG_FILES([
     Makefile
     src/Makefile
     src/actions/Makefile
-    src/tests/Makefile
-    src/fm.h
     data/Makefile
     data/libsmfm-pref-apps.1
     data/ui/Makefile
@@ -288,7 +235,6 @@ AC_CONFIG_FILES([
     docs/reference/Makefile
     docs/reference/libfm/Makefile
     docs/reference/libfm/version.xml
-    libsmfm.pc
     libsmfm-gtk.pc
     libsmfm-gtk3.pc
 ])
@@ -301,19 +247,15 @@ echo
 echo "prefix:                                                 $prefix"
 echo "sysconfdir:                                             $sysconfdir"
 echo "Enable compiler flags and other support for debugging:  $enable_debug"
-echo "Build udisks support (Linux only, experimental):        $enable_udisks"
-echo "Build with libexif for faster thumbnail loading:        $enable_exif"
 echo "Build demo program src/demo/libsmfm-demo:               $enable_demo"
 echo "Build with custom actions support (requires Vala):      $enable_actions"
 echo "Large file support:                                     $largefile"
-if test x"$have_scheme_handler" = x"no"; then
-echo "GIO module for preferred apps (for glib < 2.28 only):   $giomodulesdir"
-else
-echo "GIO module for preferred apps (for glib < 2.28 only):   not required"
-fi
 echo "Build libsmfm-gtk for Gtk+ version:                     $ac_with_gtk"
 echo "Build API doc with gtk-doc (recommended for make dist): $enable_gtk_doc"
 echo
+echo
+echo  "LIBSMFM_CFLAGS   : $LIBSMFM_CFLAGS"
+echo  "LIBSMFM_LIBS     : $LIBSMFM_LIBS"
 echo
 
 if test x"$sysconfdir" != x'/etc'; then

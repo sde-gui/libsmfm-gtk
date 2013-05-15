@@ -91,8 +91,8 @@
 #include "fm-gtk-file-launcher.h"
 #include "fm-file-menu.h"
 #include "fm-gtk-utils.h"
-#include "fm-templates.h"
-#include "fm-config.h"
+#include <libsmfm/fm-templates.h>
+#include <libsmfm/fm-config.h>
 
 static const char folder_popup_xml[] =
 "<popup>"

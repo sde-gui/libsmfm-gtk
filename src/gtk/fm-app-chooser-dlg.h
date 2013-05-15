@@ -25,7 +25,7 @@
 
 #include <gtk/gtk.h>
 #include <gio/gio.h>
-#include "fm-mime-type.h"
+#include <libsmfm/fm-mime-type.h>
 
 G_BEGIN_DECLS
 

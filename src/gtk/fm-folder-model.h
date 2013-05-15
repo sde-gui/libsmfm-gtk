@@ -28,7 +28,7 @@
 
 #include <sys/types.h>
 
-#include "fm-folder.h"
+#include <libsmfm/fm-folder.h>
 #include "fm-sortable.h"
 
 G_BEGIN_DECLS

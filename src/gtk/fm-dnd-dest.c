@@ -95,10 +95,9 @@
 #include "fm-dnd-dest.h"
 #include "fm-gtk-utils.h"
 #include "fm-gtk-marshal.h"
-#include "fm-file-info-job.h"
 #include "fm-gtk-file-launcher.h"
 
-#include "fm-config.h"
+#include <libsmfm/fm.h>
 
 #include <glib/gi18n-lib.h>
 #include <string.h>

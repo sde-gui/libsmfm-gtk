@@ -37,13 +37,13 @@
 #endif
 
 #include "fm-places-model.h"
-#include "fm-file.h"
+#include <libsmfm/fm-file.h>
 
 #include <glib/gi18n-lib.h>
 
-#include "fm-config.h"
-#include "fm-monitor.h"
-#include "fm-file-info-job.h"
+#include <libsmfm/fm-config.h>
+#include <libsmfm/fm-monitor.h>
+#include <libsmfm/fm-file-info-job.h>
 
 /* standard items order */
 typedef enum

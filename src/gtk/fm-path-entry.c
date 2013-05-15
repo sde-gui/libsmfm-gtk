@@ -45,8 +45,8 @@
 #include "fm-path-entry.h"
 /* for completion */
 #include "fm-folder-model.h"
-#include "fm-file.h"
-#include "fm-utils.h"
+#include <libsmfm/fm-file.h>
+#include <libsmfm/fm-utils.h>
 
 #include <string.h>
 #include <gio/gio.h>

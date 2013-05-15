@@ -22,7 +22,7 @@
 #ifndef __FM_GTK_H__
 #define __FM_GTK_H__
 
-#include "fm.h"
+#include <libsmfm/fm.h>
 #include "fm-app-chooser-combo-box.h"
 #include "fm-app-chooser-dlg.h"
 #include "fm-app-menu-view.h"

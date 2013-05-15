@@ -34,9 +34,9 @@
 #endif
 
 #include "fm-dir-tree-model.h"
-#include "fm-folder.h"
+#include <libsmfm/fm-folder.h>
 #include "fm-icon-pixbuf.h"
-#include "fm-config.h"
+#include <libsmfm/fm-config.h>
 
 #include <glib/gi18n-lib.h>
 #include <string.h>

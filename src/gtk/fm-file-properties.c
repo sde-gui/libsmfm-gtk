@@ -77,11 +77,8 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include "fm-file-info.h"
+#include <libsmfm/fm.h>
 #include "fm-file-properties.h"
-#include "fm-deep-count-job.h"
-#include "fm-utils.h"
-#include "fm-config.h"
 
 #include "fm-progress-dlg.h"
 #include "fm-gtk-utils.h"

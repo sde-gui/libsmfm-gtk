@@ -27,7 +27,7 @@
 #include <gtk/gtk.h>
 #include <gio/gio.h>
 
-#include "fm-path.h"
+#include <libsmfm/fm-path.h>
 
 G_BEGIN_DECLS
 

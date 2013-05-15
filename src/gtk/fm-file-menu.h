@@ -23,8 +23,8 @@
 #define __FM_FILE_MENU__
 
 #include <gtk/gtk.h>
-#include "fm-file-info.h"
-#include "fm-file-launcher.h"
+#include <libsmfm/fm-file-info.h>
+#include <libsmfm/fm-file-launcher.h>
 
 G_BEGIN_DECLS
 

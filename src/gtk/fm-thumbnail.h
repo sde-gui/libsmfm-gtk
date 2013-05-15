@@ -24,8 +24,8 @@
 #define __FM_THUMBNAIL_H__
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
-#include "fm-file-info.h"
-#include "fm-thumbnail-loader.h"
+#include <libsmfm/fm-file-info.h>
+#include <libsmfm/fm-thumbnail-loader.h>
 
 G_BEGIN_DECLS
 
