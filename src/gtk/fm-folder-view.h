@@ -24,9 +24,9 @@
 #define __FOLDER_VIEW_H__
 
 #include <gtk/gtk.h>
-#include <libsmfm/fm-file-info.h>
+#include <libsmfm-core/fm-file-info.h>
 #include "fm-folder-model.h"
-#include <libsmfm/fm-file-launcher.h>
+#include <libsmfm-core/fm-file-launcher.h>
 
 G_BEGIN_DECLS
 

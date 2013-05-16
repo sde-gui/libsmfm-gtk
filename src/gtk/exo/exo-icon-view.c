@@ -43,8 +43,8 @@
 
 #include <gdk/gdkkeysyms.h>
 
-#include <libsmfm/fm-config.h>
-#include <libsmfm/fm-file-info-deferred-load-worker.h>
+#include <libsmfm-core/fm-config.h>
+#include <libsmfm-core/fm-file-info-deferred-load-worker.h>
 
 /*
 #include <exo/exo-config.h>

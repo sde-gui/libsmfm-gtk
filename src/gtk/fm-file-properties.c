@@ -77,7 +77,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include <libsmfm/fm.h>
+#include <libsmfm-core/fm.h>
 #include "fm-file-properties.h"
 
 #include "fm-progress-dlg.h"

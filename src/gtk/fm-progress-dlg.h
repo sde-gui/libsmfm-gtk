@@ -24,7 +24,7 @@
 #define __FM_PROGRESS_DLG_H__
 
 #include <gtk/gtk.h>
-#include <libsmfm/fm-file-ops-job.h>
+#include <libsmfm-core/fm-file-ops-job.h>
 
 G_BEGIN_DECLS
 

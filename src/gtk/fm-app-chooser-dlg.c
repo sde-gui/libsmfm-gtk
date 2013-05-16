@@ -39,7 +39,7 @@
 #include <glib/gi18n-lib.h>
 #include <string.h>
 #include <unistd.h>
-#include <libsmfm/fm.h>
+#include <libsmfm-core/fm.h>
 #include "fm-app-chooser-dlg.h"
 #include "fm-app-menu-view.h"
 #include "fm-gtk-utils.h"

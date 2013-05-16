@@ -35,9 +35,9 @@
 #include <config.h>
 #endif
 
-#include <libsmfm/fm-config.h>
+#include <libsmfm-core/fm-config.h>
 #include "fm-folder-model.h"
-#include <libsmfm/fm-file-info.h>
+#include <libsmfm-core/fm-file-info.h>
 #include "fm-icon-pixbuf.h"
 #include "fm-thumbnail.h"
 #include "fm-gtk-marshal.h"

@@ -28,8 +28,8 @@
 #include <gio/gio.h>
 #include <stdarg.h>
 
-#include <libsmfm/fm-file-info.h>
-#include <libsmfm/fm-file-launcher.h>
+#include <libsmfm-core/fm-file-info.h>
+#include <libsmfm-core/fm-file-launcher.h>
 
 G_BEGIN_DECLS
 

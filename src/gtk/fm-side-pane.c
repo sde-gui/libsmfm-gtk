@@ -35,7 +35,7 @@
 #include "fm-places-view.h"
 #include "fm-dir-tree-model.h"
 #include "fm-dir-tree-view.h"
-#include <libsmfm/fm-file-info-job.h>
+#include <libsmfm-core/fm-file-info-job.h>
 
 #include <glib/gi18n-lib.h>
 

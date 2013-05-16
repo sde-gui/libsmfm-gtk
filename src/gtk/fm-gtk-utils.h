@@ -27,7 +27,7 @@
 #include <gio/gio.h>
 #include <stdarg.h>
 
-#include <libsmfm/fm-path.h>
+#include <libsmfm-core/fm-path.h>
 
 G_BEGIN_DECLS
 

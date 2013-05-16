@@ -44,7 +44,7 @@
 #include "fm-gtk-utils.h"
 #include "fm-app-chooser-dlg.h"
 
-#include <libsmfm/fm.h>
+#include <libsmfm-core/fm.h>
 #include "gtk-compat.h"
 
 /* for open() */

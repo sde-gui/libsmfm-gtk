@@ -30,7 +30,7 @@
  * which adds small link picture if corresponding file is symbolic link.
  */
 
-#include <libsmfm/fm-config.h>
+#include <libsmfm-core/fm-config.h>
 
 #include "fm-cell-renderer-pixbuf.h"
 

@@ -25,8 +25,8 @@
 #include <gtk/gtk.h>
 #include <gio/gio.h>
 
-#include <libsmfm/fm-file-info.h>
-#include <libsmfm/fm-bookmarks.h>
+#include <libsmfm-core/fm-file-info.h>
+#include <libsmfm-core/fm-bookmarks.h>
 #include "fm-icon-pixbuf.h"
 
 G_BEGIN_DECLS

@@ -43,7 +43,7 @@
 #include "fm-path-entry.h"
 #include "fm-app-chooser-dlg.h"
 
-#include <libsmfm/fm.h>
+#include <libsmfm-core/fm.h>
 
 static GtkDialog*   _fm_get_user_input_dialog   (GtkWindow* parent, const char* title, const char* msg);
 static gchar*       _fm_user_input_dialog_run   (GtkDialog* dlg, GtkEntry *entry, GtkWidget *extra);

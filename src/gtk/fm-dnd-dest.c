@@ -97,7 +97,7 @@
 #include "fm-gtk-marshal.h"
 #include "fm-gtk-file-launcher.h"
 
-#include <libsmfm/fm.h>
+#include <libsmfm-core/fm.h>
 
 #include <glib/gi18n-lib.h>
 #include <string.h>

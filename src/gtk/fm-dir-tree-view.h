@@ -22,7 +22,7 @@
 #define __FM_DIR_TREE_VIEW_H__
 
 #include <gtk/gtk.h>
-#include <libsmfm/fm-path.h>
+#include <libsmfm-core/fm-path.h>
 #include "fm-dnd-dest.h"
 
 G_BEGIN_DECLS

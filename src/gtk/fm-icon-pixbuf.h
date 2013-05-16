@@ -24,7 +24,7 @@
 #define __FM_ICON_PIXBUF_H__
 
 #include <gtk/gtk.h>
-#include <libsmfm/fm-icon.h>
+#include <libsmfm-core/fm-icon.h>
 
 G_BEGIN_DECLS
 
