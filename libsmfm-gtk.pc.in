@@ -8,4 +8,4 @@ Description: A glib/gio-based lib used to develop file managers providing some f
 Requires: gtk+-2.0 >= 2.18.0 gthread-2.0 gio-unix-2.0 libsmfm-core >= @VERSION@
 Version: @VERSION@
 Libs: -L${libdir} -lsmfm-gtk
-Cflags: @FMINCLUDEADD@
+Cflags: @FMINCLUDEADD@/libsmfm-gtk2-@FMLIBVER@
