@@ -108,7 +108,7 @@ if test x"$ac_with_gtk" != xno; then
       ;;
     *)
       pkg_modules="$gio_modules gtk+-2.0 >= 2.18.0 cairo >= 1.8.0"
-      LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk.la
+      LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk2.la
       GTK_VERSION_MAJOR="2"
       ;;
   esac
@@ -163,7 +163,7 @@ AC_ARG_ENABLE(demo,
 )
 AM_CONDITIONAL(ENABLE_DEMO, test x"$enable_demo" = x"yes")
 
-GETTEXT_PACKAGE=libsmfm-gtk
+GETTEXT_PACKAGE="libsmfm-gtk$GTK_VERSION_MAJOR"
 AC_SUBST(GETTEXT_PACKAGE)
 
 # Generate po/LINGUAS on the fly rather than relying on translators
@@ -232,7 +232,7 @@ AC_CONFIG_FILES([
     docs/reference/Makefile
     docs/reference/libfm/Makefile
     docs/reference/libfm/version.xml
-    libsmfm-gtk.pc
+    libsmfm-gtk2.pc
     libsmfm-gtk3.pc
 ])
 

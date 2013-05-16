@@ -44,7 +44,7 @@ exo_SOURCES = \
 	gtk/exo/exo-string.h \
 	$(NULL)
 
-libsmfm_gtk_SOURCES = \
+libsmfm_gtk2_SOURCES = \
 	fm-gtk.c \
 	$(gtk_compat_SOURCES) \
 	$(exo_SOURCES) \
@@ -119,16 +119,16 @@ pkginclude_HEADERS = \
 	$(LIBSMFM_GTK_INCLUDES) \
 	$(NULL)
 
-EXTRA_LTLIBRARIES = libsmfm-gtk.la libsmfm-gtk3.la
+EXTRA_LTLIBRARIES = libsmfm-gtk2.la libsmfm-gtk3.la
 
 lib_LTLIBRARIES = @LIBSMFM_GTK_LTLIBRARIES@
 
-libsmfm_gtk_la_SOURCES = \
-	$(libsmfm_gtk_SOURCES) \
+libsmfm_gtk2_la_SOURCES = \
+	$(libsmfm_gtk2_SOURCES) \
 	$(NULL)
-libsmfm_gtk3_la_SOURCES = $(libsmfm_gtk_la_SOURCES)
+libsmfm_gtk3_la_SOURCES = $(libsmfm_gtk2_la_SOURCES)
 
-libsmfm_gtk_la_CFLAGS = \
+libsmfm_gtk2_la_CFLAGS = \
 	$(LIBSMFM_CFLAGS) \
 	$(GTK_CFLAGS) \
 	$(MENU_CACHE_CFLAGS) \
@@ -136,23 +136,23 @@ libsmfm_gtk_la_CFLAGS = \
 	-I$(srcdir)/base \
 	-I$(srcdir)/job \
 	-Werror-implicit-function-declaration
-libsmfm_gtk3_la_CFLAGS = $(libsmfm_gtk_la_CFLAGS)
+libsmfm_gtk3_la_CFLAGS = $(libsmfm_gtk2_la_CFLAGS)
 
-libsmfm_gtk_la_LIBADD = \
+libsmfm_gtk2_la_LIBADD = \
 	$(LIBSMFM_LIBS) \
 	$(GTK_LIBS) \
 	$(MENU_CACHE_LIBS) \
 	$(INTLLIBS) \
 	$(NULL)
-libsmfm_gtk3_la_LIBADD = $(libsmfm_gtk_la_LIBADD)
+libsmfm_gtk3_la_LIBADD = $(libsmfm_gtk2_la_LIBADD)
 
-libsmfm_gtk_la_LDFLAGS = \
+libsmfm_gtk2_la_LDFLAGS = \
 	-no-undefined \
 	-export-symbols-regex ^fm \
 	-version-info $(ABI_VERSION) \
 	-rpath $(libdir) \
 	$(NULL)
-libsmfm_gtk3_la_LDFLAGS = $(libsmfm_gtk_la_LDFLAGS)
+libsmfm_gtk3_la_LDFLAGS = $(libsmfm_gtk2_la_LDFLAGS)
 
 EXTRA_PROGRAMS = libsmfm-pref-apps
 
@@ -222,7 +222,7 @@ libsmfm_file_search_cli_demo_LDADD = \
 	$(LIBSMFM_LIBS) \
 	$(GTK_LIBS) \
 	$(INTLLIBS) \
-	libsmfm-gtk.la \
+	libsmfm-gtk2.la \
 	$(NULL)
 endif
 

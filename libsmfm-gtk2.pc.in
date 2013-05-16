@@ -3,9 +3,9 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libsmfm-gtk
+Name: libsmfm-gtk2
 Description: A glib/gio-based lib used to develop file managers providing some file management utilities and related-widgets missing in gtk+/glib.
 Requires: gtk+-2.0 >= 2.18.0 gthread-2.0 gio-unix-2.0 libsmfm-core >= @VERSION@
 Version: @VERSION@
-Libs: -L${libdir} -lsmfm-gtk
+Libs: -L${libdir} -lsmfm-gtk2
 Cflags: @FMINCLUDEADD@/libsmfm-gtk2-@FMLIBVER@
