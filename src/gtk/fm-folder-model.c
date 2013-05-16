@@ -88,7 +88,12 @@ struct _FmFolderItem
     gboolean is_thumbnail : 1;
     gboolean thumbnail_loading : 1;
     gboolean thumbnail_failed : 1;
+    gboolean color_valid : 1;
+#if GTK_CHECK_VERSION(3, 0, 0)
+    GdkRGBA color;
+#else
     GdkColor color;
+#endif
 };
 
 typedef struct _FmFolderModelFilterItem
@@ -330,7 +335,12 @@ static void fm_folder_model_tree_model_init(GtkTreeModelIface *iface)
     column_infos[FM_FOLDER_MODEL_COL_INFO]->type= G_TYPE_POINTER;
     column_infos[FM_FOLDER_MODEL_COL_ICON]->type= GDK_TYPE_PIXBUF;
     column_infos[FM_FOLDER_MODEL_COL_GICON]->type= G_TYPE_ICON;
+#if GTK_CHECK_VERSION(3, 0, 0)
+    column_infos[FM_FOLDER_MODEL_COL_COLOR]->type= GDK_TYPE_RGBA;
+#else
     column_infos[FM_FOLDER_MODEL_COL_COLOR]->type= GDK_TYPE_COLOR;
+#endif
+
 }
 
 static void fm_folder_model_tree_sortable_init(GtkTreeSortableIface *iface)
@@ -752,13 +762,19 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
     case FM_FOLDER_MODEL_COL_COLOR:
         if (model->use_custom_colors)
         {
-            if (!item->color.pixel)
+            if (!item->color_valid)
             {
                 unsigned long color = fm_file_info_get_color(info);
+#if GTK_CHECK_VERSION(3, 0, 0)
+                item->color.red = ((color >> 16) & 0xFF) / 255.0;
+                item->color.green = ((color >> 8) & 0xFF) / 255.0;
+                item->color.blue = ((color) & 0xFF) / 255.0;
+#else
                 item->color.red = ((color >> 16) & 0xFF) * 257;
                 item->color.green = ((color >> 8) & 0xFF) * 257;
                 item->color.blue = ((color) & 0xFF) * 257;
-                item->color.pixel = 1;
+#endif
+                item->color_valid = TRUE;
             }
             g_value_set_boxed(value, &item->color);
         }

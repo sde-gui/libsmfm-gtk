@@ -600,9 +600,13 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
                                 "text", FM_FOLDER_MODEL_COL_NAME );
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
+                                "foreground-rgba", FM_FOLDER_MODEL_COL_COLOR);
+#else
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
                                 "foreground-gdk", FM_FOLDER_MODEL_COL_COLOR);
-
+#endif
 //    g_object_set(G_OBJECT(render), "foreground-set", TRUE, NULL);
 
 
@@ -918,7 +922,12 @@ static GtkTreeViewColumn* create_list_view_column(FmStandardView* fv,
     gtk_tree_view_column_pack_start(col, render, TRUE);
     gtk_tree_view_column_set_attributes(col, render, "text", col_id, NULL);
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+    gtk_tree_view_column_add_attribute(col, render, "foreground-rgba", FM_FOLDER_MODEL_COL_COLOR);
+#else
     gtk_tree_view_column_add_attribute(col, render, "foreground-gdk", FM_FOLDER_MODEL_COL_COLOR);
+#endif
+
 
     gtk_tree_view_column_set_resizable(col, TRUE);
     /* Unfortunately if we don't set it sortable we cannot right-click it too

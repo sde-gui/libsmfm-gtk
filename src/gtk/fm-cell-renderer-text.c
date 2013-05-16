@@ -205,6 +205,7 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 #if GTK_CHECK_VERSION(3, 0, 0)
     GtkStyleContext* style;
     GtkStateFlags state;
+    GdkRGBA * foreground_color = NULL;
 #else
     GtkStyle* style;
     GtkStateType state;
@@ -228,7 +229,11 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
                  "wrap-width", &wrap_width,
                  "alignment" , &alignment,
                  "text", &text,
+#if GTK_CHECK_VERSION(3, 0, 0)
+                 "foreground-rgba", &foreground_color,
+#else
                  "foreground-gdk", &foreground_color,
+#endif
                  NULL);
 
 #if 0
@@ -246,7 +251,17 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     {
         PangoAttrList * attr_list = pango_attr_list_new();
         add_attr(attr_list,
-            pango_attr_foreground_new(foreground_color->red, foreground_color->green, foreground_color->blue));
+#if GTK_CHECK_VERSION(3, 0, 0)
+            pango_attr_foreground_new(
+                foreground_color->red * 65535,
+                foreground_color->green * 65535,
+                foreground_color->blue * 65535));
+#else
+            pango_attr_foreground_new(
+                foreground_color->red,
+                foreground_color->green,
+                foreground_color->blue));
+#endif
         pango_layout_set_attributes(layout, attr_list);
         pango_attr_list_unref(attr_list);
     }
