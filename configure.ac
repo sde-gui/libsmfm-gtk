@@ -104,12 +104,12 @@ if test x"$ac_with_gtk" != xno; then
     3|3.*)
       pkg_modules="$gio_modules gtk+-3.0 cairo >= 1.8.0"
       LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk3.la
-      ac_with_gtk="3.0"
+      GTK_VERSION_MAJOR="3"
       ;;
     *)
       pkg_modules="$gio_modules gtk+-2.0 >= 2.18.0 cairo >= 1.8.0"
       LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk.la
-      ac_with_gtk="2.0"
+      GTK_VERSION_MAJOR="2"
       ;;
   esac
   PKG_CHECK_MODULES(GTK, [$pkg_modules])
@@ -125,6 +125,7 @@ AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 AC_SUBST(LIBSMFM_GTK_LTLIBRARIES)
 AC_SUBST(LIBSMFM_PREF_APPS)
+AC_SUBST(GTK_VERSION_MAJOR)
 
 dnl pango_modules="pango >= 1.16.0"
 dnl PKG_CHECK_MODULES(PANGO, [$pango_modules])
@@ -258,12 +259,3 @@ echo  "LIBSMFM_CFLAGS   : $LIBSMFM_CFLAGS"
 echo  "LIBSMFM_LIBS     : $LIBSMFM_LIBS"
 echo
 
-if test x"$sysconfdir" != x'/etc'; then
-    echo
-    echo
-    echo 'Warning: sysconfdir is not /etc.'
-    echo 'Please consider passing --sysconfdir=/etc to configure.';
-    echo 'Otherwise default config files will be installed to wrong place.'
-    echo
-    echo
-fi
