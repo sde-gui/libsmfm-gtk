@@ -67,6 +67,7 @@ typedef enum {
     FM_FOLDER_MODEL_COL_INFO,
     FM_FOLDER_MODEL_COL_DIRNAME,
     FM_FOLDER_MODEL_COL_COLOR,
+    FM_FOLDER_MODEL_COL_COLOR_SET,
     /*< private >*/
     FM_FOLDER_MODEL_N_COLS
 } FmFolderModelCol;

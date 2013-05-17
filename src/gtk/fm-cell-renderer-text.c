@@ -211,6 +211,7 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     GtkStateType state;
     GdkColor * foreground_color = NULL;
 #endif
+    gboolean foreground_set = FALSE;
     gchar* text;
     gint text_width;
     gint text_height;
@@ -229,6 +230,7 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
                  "wrap-width", &wrap_width,
                  "alignment" , &alignment,
                  "text", &text,
+                 "foreground-set", &foreground_set,
 #if GTK_CHECK_VERSION(3, 0, 0)
                  "foreground-rgba", &foreground_color,
 #else
@@ -247,7 +249,7 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 
     PangoLayout* layout = gtk_widget_create_pango_layout(widget, text);
 
-    if (foreground_color && (flags & GTK_CELL_RENDERER_SELECTED) == 0)
+    if (foreground_set && foreground_color && (flags & GTK_CELL_RENDERER_SELECTED) == 0)
     {
         PangoAttrList * attr_list = pango_attr_list_new();
         add_attr(attr_list,

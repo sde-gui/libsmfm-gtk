@@ -88,7 +88,8 @@ struct _FmFolderItem
     gboolean is_thumbnail : 1;
     gboolean thumbnail_loading : 1;
     gboolean thumbnail_failed : 1;
-    gboolean color_valid : 1;
+    gboolean color_initialized: 1;
+    gboolean color_default : 1;
 #if GTK_CHECK_VERSION(3, 0, 0)
     GdkRGBA color;
 #else
@@ -206,7 +207,8 @@ static FmFolderModelInfo column_infos_raw[] = {
     { FM_FOLDER_MODEL_COL_INFO, 0, "info", NULL, TRUE },
     { FM_FOLDER_MODEL_COL_ICON, 0, "icon", NULL, FALSE },
     { FM_FOLDER_MODEL_COL_GICON, 0, "gicon", NULL, FALSE },
-    { FM_FOLDER_MODEL_COL_COLOR, 0, "color", NULL, FALSE }
+    { FM_FOLDER_MODEL_COL_COLOR, 0, "color", NULL, FALSE },
+    { FM_FOLDER_MODEL_COL_COLOR_SET, 0, "color-set", NULL, FALSE }
 };
 
 static guint column_infos_n = 0;
@@ -340,7 +342,7 @@ static void fm_folder_model_tree_model_init(GtkTreeModelIface *iface)
 #else
     column_infos[FM_FOLDER_MODEL_COL_COLOR]->type= GDK_TYPE_COLOR;
 #endif
-
+    column_infos[FM_FOLDER_MODEL_COL_COLOR_SET]->type= G_TYPE_BOOLEAN;
 }
 
 static void fm_folder_model_tree_sortable_init(GtkTreeSortableIface *iface)
@@ -676,6 +678,30 @@ static GtkTreePath *fm_folder_model_get_path(GtkTreeModel *tree_model,
     return path;
 }
 
+static gboolean read_item_color(FmFolderModel * model, FmFolderItem * item)
+{
+    if (G_UNLIKELY(!item->color_initialized))
+    {
+        unsigned long color = fm_file_info_get_color(item->inf);
+        item->color_default = (color == FILE_INFO_DEFAULT_COLOR);
+        if (!item->color_default)
+        {
+#if GTK_CHECK_VERSION(3, 0, 0)
+            item->color.red = ((color >> 16) & 0xFF) / 255.0;
+            item->color.green = ((color >> 8) & 0xFF) / 255.0;
+            item->color.blue = ((color) & 0xFF) / 255.0;
+#else
+            item->color.red = ((color >> 16) & 0xFF) * 257;
+            item->color.green = ((color >> 8) & 0xFF) * 257;
+            item->color.blue = ((color) & 0xFF) * 257;
+#endif
+        }
+        item->color_initialized = TRUE;
+    }
+
+    return !item->color_default;
+}
+
 static void fm_folder_model_get_value(GtkTreeModel *tree_model,
                                       GtkTreeIter *iter,
                                       gint column,
@@ -759,29 +785,14 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
     case FM_FOLDER_MODEL_COL_INFO:
         g_value_set_pointer(value, info);
         break;
+    case FM_FOLDER_MODEL_COL_COLOR_SET:
+        g_value_set_boolean(value, model->use_custom_colors && read_item_color(model, item));
+        break;
     case FM_FOLDER_MODEL_COL_COLOR:
-        if (model->use_custom_colors)
-        {
-            if (!item->color_valid)
-            {
-                unsigned long color = fm_file_info_get_color(info);
-#if GTK_CHECK_VERSION(3, 0, 0)
-                item->color.red = ((color >> 16) & 0xFF) / 255.0;
-                item->color.green = ((color >> 8) & 0xFF) / 255.0;
-                item->color.blue = ((color) & 0xFF) / 255.0;
-#else
-                item->color.red = ((color >> 16) & 0xFF) * 257;
-                item->color.green = ((color >> 8) & 0xFF) * 257;
-                item->color.blue = ((color) & 0xFF) * 257;
-#endif
-                item->color_valid = TRUE;
-            }
+        if (model->use_custom_colors && read_item_color(model, item))
             g_value_set_boxed(value, &item->color);
-        }
         else
-        {
             g_value_set_boxed(value, NULL);
-        }
         break;
     case FM_FOLDER_MODEL_COL_DIRNAME:
         {

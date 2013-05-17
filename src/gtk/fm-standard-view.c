@@ -607,6 +607,8 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
                                 "foreground-gdk", FM_FOLDER_MODEL_COL_COLOR);
 #endif
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
+                                "foreground-set", FM_FOLDER_MODEL_COL_COLOR_SET);
 //    g_object_set(G_OBJECT(render), "foreground-set", TRUE, NULL);
 
 
@@ -927,6 +929,7 @@ static GtkTreeViewColumn* create_list_view_column(FmStandardView* fv,
 #else
     gtk_tree_view_column_add_attribute(col, render, "foreground-gdk", FM_FOLDER_MODEL_COL_COLOR);
 #endif
+    gtk_tree_view_column_add_attribute(col, render, "foreground-set", FM_FOLDER_MODEL_COL_COLOR_SET);
 
 
     gtk_tree_view_column_set_resizable(col, TRUE);
