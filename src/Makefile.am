@@ -226,6 +226,11 @@ libsmfm_file_search_cli_demo_gtk2_SOURCES = \
 	$(NULL)
 libsmfm_file_search_cli_demo_gtk3_SOURCES = $(libsmfm_file_search_cli_demo_gtk2_SOURCES)
 
+libsmfm_file_search_cli_demo_gtk2_DEPENDENCIES = \
+	@LIBSMFM_GTK_LTLIBRARIES@ \
+	$(NULL)
+libsmfm_file_search_cli_demo_gtk3_DEPENDENCIES = $(libsmfm_demo_gtk2_DEPENDENCIES)
+
 libsmfm_file_search_cli_demo_gtk2_CFLAGS = \
 	$(LIBSMFM_CFLAGS) \
 	$(GTK_CFLAGS) \
