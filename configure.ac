@@ -230,8 +230,8 @@ AC_CONFIG_FILES([
     po/Makefile.in
     docs/Makefile
     docs/reference/Makefile
-    docs/reference/libfm/Makefile
-    docs/reference/libfm/version.xml
+    docs/reference/libsmfm-gtk/Makefile
+    docs/reference/libsmfm-gtk/version.xml
     libsmfm-gtk2.pc
     libsmfm-gtk3.pc
 ])

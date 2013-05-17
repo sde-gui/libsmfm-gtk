@@ -11,14 +11,14 @@ AUTOMAKE_OPTIONS = 1.6
 # of using the various options.
 
 # The name of the module, e.g. 'glib'.
-DOC_MODULE=libfm
+DOC_MODULE=libsmfm-gtk@GTK_VERSION_MAJOR@
 
 # Uncomment for versioned docs and specify the version of the module, e.g. '2'.
 #DOC_MODULE_VERSION=2
 
 
 # The top-level SGML file. You can change this if you want to.
-DOC_MAIN_SGML_FILE=$(DOC_MODULE)-docs.xml
+DOC_MAIN_SGML_FILE=libsmfm-gtk-docs.xml
 
 # The directory containing the source code. Relative to $(srcdir).
 # gtk-doc will search all .c & .h files beneath here for inline comments
@@ -55,14 +55,10 @@ FIXXREF_OPTIONS=
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
 HFILE_GLOB= \
 	$(top_srcdir)/src/*.h \
-	$(top_srcdir)/src/base/*.h \
-	$(top_srcdir)/src/job/*.h \
 	$(top_srcdir)/src/gtk/*.h \
 	$(NULL)
 
 CFILE_GLOB=$(top_srcdir)/src/*.c \
-	$(top_srcdir)/src/base/*.c \
-	$(top_srcdir)/src/job/*.c \
 	$(top_srcdir)/src/gtk/*.c \
 	$(NULL)
 
@@ -73,18 +69,9 @@ EXTRA_HFILES=
 # Header files to ignore when scanning. Use base file name, no paths
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 IGNORE_HFILES= \
-	fm-marshal.h \
 	fm-gtk-marshal.h \
 	main-win.h \
 	dbus-utils.h \
-	fm-udisks.h \
-	g-udisks-device.h \
-	g-udisks-drive.h \
-	g-udisks-mount.h \
-	g-udisks-volume.h \
-	g-udisks-volume-monitor.h \
-	udisks-device.h \
-	udisks.h \
 	fm-app-lookup.h \
 	exo-icon-view.h \
 	exo-marshal.h \
@@ -119,8 +106,8 @@ GTKDOC_CFLAGS= \
 	-I$(top_builddir) \
 	$(GTK_CFLAGS)
 GTKDOC_LIBS= \
-	$(top_builddir)/src/libfm.la \
-	$(top_builddir)/src/$(LIBFM_GTK_LTLIBRARIES) \
+	$(top_srcdir)/src/libsmfm-gtk@GTK_VERSION_MAJOR@.la \
+	$(top_srcdir)/src/$(LIBSMFM_GTK_LTLIBRARIES) \
 	$(GTK_LIBS) \
 	$(NULL)
 
