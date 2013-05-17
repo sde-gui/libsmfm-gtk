@@ -162,6 +162,8 @@ AC_ARG_ENABLE(demo,
     [enable_demo=no]
 )
 AM_CONDITIONAL(ENABLE_DEMO, test x"$enable_demo" = x"yes")
+DEMO_APPS="libsmfm-demo-gtk$GTK_VERSION_MAJOR libsmfm-file-search-cli-demo-gtk$GTK_VERSION_MAJOR"
+AC_SUBST(DEMO_APPS)
 
 GETTEXT_PACKAGE="libsmfm-gtk$GTK_VERSION_MAJOR"
 AC_SUBST(GETTEXT_PACKAGE)
