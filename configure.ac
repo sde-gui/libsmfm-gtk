@@ -18,7 +18,13 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AM_PROG_LIBTOOL
 
-# libsmfm
+# Checks for header files.
+AC_HEADER_STDC
+
+# Checks for library functions.
+AC_SEARCH_LIBS([pow], [m])
+
+# libsmfm-core
 PKG_CHECK_MODULES(LIBSMFM, "libsmfm-core")
 AC_SUBST(LIBSMFM_CFLAGS)
 AC_SUBST(LIBSMFM_LIBS)
@@ -50,16 +56,18 @@ fi
 AC_SUBST(LIBSMFMACTIONS)
 AC_SUBST(ACTIONS_SUBDIR)
 
-# Checks for libraries.
+# modules required
+if test x"$enable_actions" = xyes; then
+  gio_modules="gio-unix-2.0 >= 2.26.0 glib-2.0 >= 2.26.0"
+else
+  gio_modules="glib-2.0 >= 2.22.0 gio-unix-2.0"
+fi
+gio_modules="$gio_modules gthread-2.0 gobject-2.0 pango >= 1.16.0"
 
-# Checks for header files.
-AC_HEADER_STDC
+PKG_CHECK_MODULES(GIO, [$gio_modules])
+AC_SUBST(GIO_CFLAGS)
+AC_SUBST(GIO_LIBS)
 
-# Checks for typedefs, structures, and compiler characteristics.
-
-# Checks for library functions.
-dnl AC_FUNC_MMAP
-AC_SEARCH_LIBS([pow], [m])
 
 # Large file support
 AC_ARG_ENABLE([largefile],
@@ -81,46 +89,29 @@ dnl libgtk version
 AC_ARG_WITH(gtk,
     [AC_HELP_STRING([--with-gtk=VER],
         [choose Gtk+ version for libsmfm-gtk build (default=2)])
-AC_HELP_STRING([--without-gtk],
-        [disable libsmfm-gtk build])],
+    ],
     [ac_with_gtk="${withval}"],
     [ac_with_gtk=2]
 )
 
-# modules required
-if test x"$enable_actions" = xyes; then
-  gio_modules="gio-unix-2.0 >= 2.26.0 glib-2.0 >= 2.26.0"
-else
-  gio_modules="glib-2.0 >= 2.22.0 gio-unix-2.0"
-fi
-gio_modules="$gio_modules gthread-2.0 gobject-2.0 pango >= 1.16.0"
-
-PKG_CHECK_MODULES(GIO, [$gio_modules])
-AC_SUBST(GIO_CFLAGS)
-AC_SUBST(GIO_LIBS)
-
-if test x"$ac_with_gtk" != xno; then
-  case "$ac_with_gtk" in
+case "$ac_with_gtk" in
     3|3.*)
-      pkg_modules="$gio_modules gtk+-3.0 cairo >= 1.8.0"
-      LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk3.la
-      GTK_VERSION_MAJOR="3"
-      ;;
+        pkg_modules="$gio_modules gtk+-3.0 cairo >= 1.8.0"
+        GTK_VERSION_MAJOR="3"
+        ;;
+    2|2.*)
+        pkg_modules="$gio_modules gtk+-2.0 >= 2.18.0 cairo >= 1.8.0"
+        GTK_VERSION_MAJOR="2"
+        ;;
     *)
-      pkg_modules="$gio_modules gtk+-2.0 >= 2.18.0 cairo >= 1.8.0"
-      LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk2.la
-      GTK_VERSION_MAJOR="2"
-      ;;
-  esac
-  PKG_CHECK_MODULES(GTK, [$pkg_modules])
-  LIBSMFM_PREF_APPS="libsmfm-pref-apps"
-else
-  GTK_CFLAGS=
-  GTK_LIBS=
-  LIBSMFM_GTK_LTLIBRARIES=
-  ac_with_gtk="none"
-  LIBSMFM_PREF_APPS=
-fi
+        AC_MSG_ERROR([Invalid value of option: --with-gtk=$ac_with_gtk])
+        ;;
+esac
+PKG_CHECK_MODULES(GTK, [$pkg_modules])
+
+LIBSMFM_GTK_LTLIBRARIES=libsmfm-gtk${GTK_VERSION_MAJOR}.la
+LIBSMFM_PREF_APPS="libsmfm-pref-apps"
+
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 AC_SUBST(LIBSMFM_GTK_LTLIBRARIES)
