@@ -171,7 +171,10 @@ static void on_single_click_changed(FmConfig* cfg, FmStandardView* fv)
 static void on_highlight_file_names_changed(FmConfig* cfg, FmStandardView* fv)
 {
     if (fv->model)
+    {
         fm_folder_model_set_use_custom_colors(fv->model, cfg->highlight_file_names);
+        gtk_widget_queue_draw(GTK_WIDGET(fv->view));
+    }
 }
 
 static void on_icon_view_item_activated(ExoIconView* iv, GtkTreePath* path, FmStandardView* fv)
