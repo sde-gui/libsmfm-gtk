@@ -3351,7 +3351,7 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
   GList              *items = first_item;
   gint               *max_width;
   gint               *max_height;
-  gint                focus_width;
+  gint                focus_width = 0;
   gint                current_width;
   gint                colspan;
   gint                col = 0;
@@ -3453,7 +3453,7 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
   GList              *last_item;
   gint               *max_width;
   gint               *max_height;
-  gint                focus_width;
+  gint                focus_width = 0;
   gint                current_height;
   gint                rowspan;
   gint                row = 0;

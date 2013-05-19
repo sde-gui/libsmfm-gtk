@@ -410,6 +410,7 @@ static void set_icon_size(FmStandardView* fv, guint icon_size)
         /* set row spacing in range 2...12 pixels */
         gint c_size = MIN(12, 2 + icon_size / 8);
         exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), c_size);
+        exo_icon_view_set_column_spacing(EXO_ICON_VIEW(fv->view), c_size);
     }
 #endif
 }
@@ -565,9 +566,6 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                      NULL );
         exo_icon_view_set_layout_mode( (ExoIconView*)fv->view, EXO_ICON_VIEW_LAYOUT_COLS );
         exo_icon_view_set_orientation( (ExoIconView*)fv->view, GTK_ORIENTATION_HORIZONTAL );
-
-        exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 2 );
-        exo_icon_view_set_row_spacing( (ExoIconView*)fv->view, 2 );
     }
     else /* big icon view or thumbnail view */
     {
@@ -585,8 +583,6 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
-            exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 4 );
-            exo_icon_view_set_row_spacing( (ExoIconView*)fv->view, 4 );
         }
         else
         {
@@ -600,8 +596,6 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "xalign", 0.5,
                          "yalign", 0.0,
                          NULL );
-            exo_icon_view_set_column_spacing( (ExoIconView*)fv->view, 8 );
-            exo_icon_view_set_row_spacing( (ExoIconView*)fv->view, 8 );
         }
     }
     gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), render, TRUE);
