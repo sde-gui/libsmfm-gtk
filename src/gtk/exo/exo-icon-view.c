@@ -583,6 +583,8 @@ struct _ExoIconViewPrivate
   gint column_spacing;
   gint margin;
 
+  gint item_padding;
+
   gint text_column;
   gint markup_column;
   gint pixbuf_column;
@@ -1276,6 +1278,8 @@ exo_icon_view_init (ExoIconView *icon_view)
   icon_view->priv->row_spacing = 6;
   icon_view->priv->column_spacing = 6;
   icon_view->priv->margin = 6;
+  icon_view->priv->item_padding = 6;
+//icon_view->priv->item_padding = 0;
 
   icon_view->priv->enable_search = TRUE;
   icon_view->priv->search_column = -1;
@@ -1712,7 +1716,12 @@ exo_icon_view_allocate_children (ExoIconView *icon_view)
 
       /* totally ignore our child's requisition */
       if (child->cell < 0)
-        allocation = child->item->area;
+      {
+        allocation.x = child->item->area.x + icon_view->priv->item_padding;
+        allocation.y = child->item->area.y + icon_view->priv->item_padding;
+        allocation.width = child->item->area.width - icon_view->priv->item_padding * 2;
+        allocation.height = child->item->area.height - icon_view->priv->item_padding * 2;
+      }
       else
         allocation = child->item->box[child->cell];
 
@@ -3730,7 +3739,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
 
   exo_icon_view_set_adjustment_upper (priv->hadjustment, priv->width);
   exo_icon_view_set_adjustment_upper (priv->vadjustment, priv->height);
-
+/*
 #if GTK_CHECK_VERSION(2, 20, 0)
   gtk_widget_get_requisition (GTK_WIDGET (icon_view), &requisition);
   if (priv->width != requisition.width
@@ -3740,7 +3749,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
       || priv->height != GTK_WIDGET (icon_view)->requisition.height)
 #endif
     gtk_widget_queue_resize_no_redraw (GTK_WIDGET (icon_view));
-
+*/
   if (gtk_widget_get_realized (GTK_WIDGET(icon_view)))
     {
       gdk_window_resize (priv->bin_window,
@@ -3766,15 +3775,15 @@ exo_icon_view_get_cell_area (ExoIconView         *icon_view,
   if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
     {
       cell_area->x = item->box[info->position].x - item->before[info->position];
-      cell_area->y = item->area.y;
+      cell_area->y = item->area.y  + icon_view->priv->item_padding;
       cell_area->width = item->box[info->position].width + item->before[info->position] + item->after[info->position];
-      cell_area->height = item->area.height;
+      cell_area->height = item->area.height -  + icon_view->priv->item_padding * 2;
     }
   else
     {
-      cell_area->x = item->area.x;
+      cell_area->x = item->area.x +  + icon_view->priv->item_padding;
       cell_area->y = item->box[info->position].y - item->before[info->position];
-      cell_area->width = item->area.width;
+      cell_area->width = item->area.width -  + icon_view->priv->item_padding * 2;
       cell_area->height = item->box[info->position].height + item->before[info->position] + item->after[info->position];
     }
 }
@@ -3847,6 +3856,9 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
           item->area.height += item->box[info->position].height + (info->position > 0 ? icon_view->priv->spacing : 0);
         }
     }
+
+  item->area.width += icon_view->priv->item_padding * 2;
+  item->area.height += icon_view->priv->item_padding * 2;
 }
 
 
@@ -3881,6 +3893,7 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
           else
             item->area.height += max_height[i] + (i > 0 ? spacing : 0);
         }
+      item->area.height += icon_view->priv->item_padding * 2;
     }
   else
     {
@@ -3892,10 +3905,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
           else
             item->area.width = MAX (item->area.width, max_width[i]);
         }
+      item->area.width += icon_view->priv->item_padding * 2;
     }
 
-  cell_area.x = item->area.x;
-  cell_area.y = item->area.y;
+  cell_area.x = item->area.x + icon_view->priv->item_padding;
+  cell_area.y = item->area.y + icon_view->priv->item_padding;
 
   for (k = 0; k < 2; ++k)
     {
@@ -3908,11 +3922,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
           if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
             {
               cell_area.width = item->box[info->position].width;
-              cell_area.height = item->area.height;
+              cell_area.height = item->area.height - 2 * icon_view->priv->item_padding;
             }
           else
             {
-              cell_area.width = item->area.width;
+              cell_area.width = item->area.width - 2 * icon_view->priv->item_padding;
               cell_area.height = max_height[i];
             }
 
@@ -3932,11 +3946,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
             }
           else
             {
-              if (item->box[info->position].width > item->area.width)
+/*              if (item->box[info->position].width > item->area.width - icon_view->priv->item_padding * 2)
                 {
-                  item->area.width = item->box[info->position].width;
+                  item->area.width = item->box[info->position].width + icon_view->priv->item_padding * 2;
                   cell_area.width = item->area.width;
-                }
+                }*/
               item->before[info->position] = item->box[info->position].y - cell_area.y;
               item->after[info->position] = cell_area.height - item->box[info->position].height - item->before[info->position];
               cell_area.y += cell_area.height + spacing;
@@ -3980,9 +3994,7 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
 {
   GtkCellRendererState flags;
   ExoIconViewCellInfo *info;
-  //GtkStateType         state;
   GdkRectangle         cell_area;
-  //gboolean             rtl;
   GList               *lp;
 
   if (G_UNLIKELY (icon_view->priv->model == NULL))
@@ -3990,62 +4002,44 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
 
   exo_icon_view_set_cell_data (icon_view, item, TRUE);
 
-  //rtl = gtk_widget_get_direction (GTK_WIDGET (icon_view)) == GTK_TEXT_DIR_RTL;
-
-  if (item->selected)
+  if (G_UNLIKELY(item->selected && !fm_config->exo_icon_draw_rectangle_around_selected_item))
     {
       flags = GTK_CELL_RENDERER_SELECTED;
-      //state = gtk_widget_has_focus (icon_view) ? GTK_STATE_SELECTED : GTK_STATE_ACTIVE;
-#if 0
-      /* FIXME We hardwire background drawing behind text cell renderers
-       * here. This is ugly, but it's done to be consistent with GtkIconView.
-       * The additional info->is_text attribute is used for performance
-       * optimization and should be removed alongside the following code. */
-
-      cr = gdk_cairo_create (drawable);
-
-      for (lp = icon_view->priv->cell_list; lp != NULL; lp = lp->next)
-        {
-          info = EXO_ICON_VIEW_CELL_INFO (lp->data);
-
-          if (G_UNLIKELY (!gtk_cell_renderer_get_visible(info->cell)))
-            continue;
-
-          if (info->is_text)
-            {
-              exo_icon_view_get_cell_area (icon_view, item, info, &cell_area);
-
-              x_0 = x - item->area.x + cell_area.x;
-              y_0 = x - item->area.x + cell_area.y;
-              x_1 = x_0 + cell_area.width;
-              y_1 = y_0 + cell_area.height;
-
-              cairo_move_to (cr, x_0 + 5, y_0);
-              cairo_line_to (cr, x_1 - 5, y_0);
-              cairo_curve_to (cr, x_1 - 5, y_0, x_1, y_0, x_1, y_0 + 5);
-              cairo_line_to (cr, x_1, y_1 - 5);
-              cairo_curve_to (cr, x_1, y_1 - 5, x_1, y_1, x_1 - 5, y_1);
-              cairo_line_to (cr, x_0 + 5, y_1);
-              cairo_curve_to (cr, x_0 + 5, y_1, x_0, y_1, x_0, y_1 - 5);
-              cairo_line_to (cr, x_0, y_0 + 5);
-              cairo_curve_to (cr, x_0, y_0 + 5, x_0, y_0, x_0 + 5, y_0);
-
-              gdk_cairo_set_source_color (cr, &GTK_WIDGET (icon_view)->style->base[state]);
-
-              cairo_fill (cr);
-            }
-        }
-
-      cairo_destroy (cr);
-
-      /* FIXME Ugly code ends here */
-#endif
     }
   else
     {
       flags = 0;
-      //state = GTK_STATE_NORMAL;
     }
+
+  if (fm_config->exo_icon_draw_rectangle_around_selected_item)
+    {
+      if (item->selected)
+        {
+#if GTK_CHECK_VERSION(3, 0, 0)
+          GtkStyleContext *style_context = gtk_widget_get_style_context(GTK_WIDGET(icon_view));
+          gtk_render_background (style_context, drawable,
+                                 x - icon_view->priv->item_padding,
+                                 y - icon_view->priv->item_padding,
+                                 item->area.width  + icon_view->priv->item_padding * 2,
+                                 item->area.height + icon_view->priv->item_padding * 2);
+          gtk_render_frame (style_context, drawable,
+                            x - icon_view->priv->item_padding,
+                            y - icon_view->priv->item_padding,
+                            item->area.width  + icon_view->priv->item_padding * 2,
+                            item->area.height + icon_view->priv->item_padding * 2);
+#else
+          gtk_paint_flat_box (GTK_WIDGET (icon_view)->style,
+                  (GdkWindow *) drawable,
+                  GTK_STATE_SELECTED,
+                  GTK_SHADOW_NONE,
+                  area,
+                  GTK_WIDGET (icon_view),
+                  "icon_view_item",
+                  x, y,
+                  item->area.width, item->area.height);
+#endif
+        }
+  }
 
   if (G_UNLIKELY (icon_view->priv->prelit_item == item))
     flags |= GTK_CELL_RENDERER_PRELIT;
@@ -4104,6 +4098,7 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
         icon_view->priv->new_model_set = FALSE;
         fm_file_info_deferred_load_start();
     }
+
 }
 
 
