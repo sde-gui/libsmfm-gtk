@@ -6046,9 +6046,13 @@ exo_icon_view_select_path (ExoIconView *icon_view,
 
   item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
   if (G_LIKELY (item != NULL))
+  {
+    if (exo_icon_view_count_selected_items(icon_view) == 0)
+    {
+      exo_icon_view_set_cursor(icon_view, path, NULL, FALSE);
+    }
     exo_icon_view_select_item (icon_view, item);
-
-  exo_icon_view_set_cursor(icon_view, path, NULL, FALSE);
+  }
 }
 
 
