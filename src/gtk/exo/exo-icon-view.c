@@ -6047,7 +6047,7 @@ exo_icon_view_select_path (ExoIconView *icon_view,
   item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
   if (G_LIKELY (item != NULL))
   {
-    if (exo_icon_view_count_selected_items(icon_view) == 0)
+    if (!exo_icon_view_is_selected_items_more(icon_view, 0))
     {
       exo_icon_view_set_cursor(icon_view, path, NULL, FALSE);
     }
@@ -6134,6 +6134,23 @@ gint exo_icon_view_count_selected_items (const ExoIconView *icon_view)
   return i;
 }
 
+gboolean exo_icon_view_is_selected_items_more(const ExoIconView *icon_view, gint max_count)
+{
+  GList *lp;
+  gint   i = 0;
+
+  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), 0);
+
+  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
+    {
+      if (EXO_ICON_VIEW_ITEM (lp->data)->selected)
+        i++;
+      if (i > max_count)
+         return TRUE;
+    }
+
+  return FALSE;
+}
 
 
 /**
