@@ -6047,6 +6047,8 @@ exo_icon_view_select_path (ExoIconView *icon_view,
   item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
   if (G_LIKELY (item != NULL))
     exo_icon_view_select_item (icon_view, item);
+
+  exo_icon_view_set_cursor(icon_view, path, NULL, FALSE);
 }
 
 
@@ -6729,6 +6731,31 @@ exo_icon_view_set_column_spacing (ExoIconView *icon_view,
       exo_icon_view_invalidate_sizes (icon_view);
 
       g_object_notify (G_OBJECT (icon_view), "column-spacing");
+    }
+}
+
+
+gint
+exo_icon_view_get_item_padding (const ExoIconView *icon_view)
+{
+  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), -1);
+  return icon_view->priv->item_padding;
+}
+
+
+void
+exo_icon_view_set_item_padding (ExoIconView *icon_view, gint item_padding)
+{
+  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+
+  if (G_LIKELY (icon_view->priv->item_padding != item_padding))
+    {
+      icon_view->priv->item_padding = item_padding;
+
+      exo_icon_view_stop_editing (icon_view, TRUE);
+      exo_icon_view_invalidate_sizes (icon_view);
+
+      //g_object_notify (G_OBJECT (icon_view), "item_padding");
     }
 }
 

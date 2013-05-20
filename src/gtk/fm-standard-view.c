@@ -404,15 +404,17 @@ static void set_icon_size(FmStandardView* fv, guint icon_size)
 
     if (item_width)
         g_object_set(G_OBJECT(fv->renderer_text), "wrap-width", item_width, NULL);
-#if 1
+
     if( fv->mode != FM_FV_LIST_VIEW ) /* this is an ExoIconView */
     {
         /* set row spacing in range 2...12 pixels */
         gint c_size = MIN(12, 2 + icon_size / 8);
         exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), c_size);
         exo_icon_view_set_column_spacing(EXO_ICON_VIEW(fv->view), c_size);
+
+        gint padding = MIN(6, 2 + icon_size / 8);
+        exo_icon_view_set_item_padding(EXO_ICON_VIEW(fv->view), padding);
     }
-#endif
 }
 
 static void update_icon_size(FmStandardView* fv)

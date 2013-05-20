@@ -210,6 +210,10 @@ gint                  exo_icon_view_get_column_spacing        (const ExoIconView
 void                  exo_icon_view_set_column_spacing        (ExoIconView              *icon_view,
                                                                gint                      column_spacing);
 
+gint                  exo_icon_view_get_item_padding          (const ExoIconView        *icon_view);
+void                  exo_icon_view_set_item_padding          (ExoIconView              *icon_view,
+                                                               gint                      item_padding);
+
 gint                  exo_icon_view_get_margin                (const ExoIconView        *icon_view);
 void                  exo_icon_view_set_margin                (ExoIconView              *icon_view,
                                                                gint                      margin);
