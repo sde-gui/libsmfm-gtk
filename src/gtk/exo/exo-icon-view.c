@@ -378,6 +378,7 @@ static void                 exo_icon_view_start_editing                  (ExoIco
                                                                           GdkEvent               *event);
 static void                 exo_icon_view_stop_editing                   (ExoIconView            *icon_view,
                                                                           gboolean                cancel_editing);
+static void                 exo_icon_view_update_cached_style_properties (ExoIconView            *icon_view);
 
 /* Source side drag signals */
 static void exo_icon_view_drag_begin       (GtkWidget        *widget,
@@ -653,6 +654,11 @@ struct _ExoIconViewPrivate
   gboolean new_model_set;
 
   gint update_indeces;
+
+  /* Cached style properties. */
+  /* FIXME: update the values when properties changed. */
+  gint style_focus_line_width;
+  gint style_focus_padding;
 };
 
 
@@ -1285,6 +1291,8 @@ exo_icon_view_init (ExoIconView *icon_view)
   icon_view->priv->search_position_func = exo_icon_view_search_position_func;
 
   icon_view->priv->flags = EXO_ICON_VIEW_DRAW_KEYFOCUS;
+
+  exo_icon_view_update_cached_style_properties(icon_view);
 }
 
 
@@ -1624,6 +1632,8 @@ exo_icon_view_realize (GtkWidget *widget)
 
   /* map the icons window */
   gdk_window_show (priv->bin_window);
+
+  exo_icon_view_update_cached_style_properties(EXO_ICON_VIEW (widget));
 }
 
 
@@ -1643,6 +1653,16 @@ exo_icon_view_unrealize (GtkWidget *widget)
     (*GTK_WIDGET_CLASS (exo_icon_view_parent_class)->unrealize) (widget);
 }
 
+
+static void exo_icon_view_update_cached_style_properties(ExoIconView * icon_view)
+{
+    g_return_if_fail(icon_view);
+
+    gtk_widget_style_get(GTK_WIDGET (icon_view),
+        "focus-line-width", &icon_view->priv->style_focus_line_width,
+        "focus-padding", &icon_view->priv->style_focus_padding,
+        NULL);
+}
 
 
 static void
@@ -1705,8 +1725,8 @@ exo_icon_view_allocate_children (ExoIconView *icon_view)
   const ExoIconViewChild   *child;
   GtkAllocation             allocation;
   const GList              *lp;
-  gint                      focus_line_width;
-  gint                      focus_padding;
+  gint                      focus_line_width = icon_view->priv->style_focus_line_width;
+  gint                      focus_padding = icon_view->priv->style_focus_padding;
 
   for (lp = priv->children; lp != NULL; lp = lp->next)
     {
@@ -1724,7 +1744,6 @@ exo_icon_view_allocate_children (ExoIconView *icon_view)
         allocation = child->item->box[child->cell];
 
       /* increase the item area by focus width/padding */
-      gtk_widget_style_get (GTK_WIDGET (icon_view), "focus-line-width", &focus_line_width, "focus-padding", &focus_padding, NULL);
       allocation.x = MAX (0, allocation.x - (focus_line_width + focus_padding));
       allocation.y = MAX (0, allocation.y - (focus_line_width + focus_padding));
       allocation.width = MIN (priv->width - allocation.x, allocation.width + 2 * (focus_line_width + focus_padding));
@@ -3351,7 +3370,7 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
   GList              *items = first_item;
   gint               *max_width;
   gint               *max_height;
-  gint                focus_width = 0;
+  gint                focus_width = icon_view->priv->style_focus_line_width;
   gint                current_width;
   gint                colspan;
   gint                col = 0;
@@ -3369,10 +3388,6 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
       max_width[i] = 0;
       max_height[i] = 0;
     }
-
-  gtk_widget_style_get (GTK_WIDGET (icon_view),
-                        "focus-line-width", &focus_width,
-                        NULL);
 
   x = priv->margin + focus_width;
   current_width = 2 * (priv->margin + focus_width);
@@ -3453,7 +3468,7 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
   GList              *last_item;
   gint               *max_width;
   gint               *max_height;
-  gint                focus_width = 0;
+  gint                focus_width = icon_view->priv->style_focus_line_width;
   gint                current_height;
   gint                rowspan;
   gint                row = 0;
@@ -3469,9 +3484,6 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
       max_height[i] = 0;
     }
 
-  gtk_widget_style_get (GTK_WIDGET (icon_view),
-                        "focus-line-width", &focus_width,
-                        NULL);
   gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
   y = priv->margin + focus_width;
@@ -3659,6 +3671,8 @@ exo_icon_view_layout (ExoIconView *icon_view)
   /* verify that we still have a valid model */
   if (G_UNLIKELY (priv->model == NULL))
     return;
+
+  exo_icon_view_update_cached_style_properties(icon_view);
 
   gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
@@ -4091,11 +4105,7 @@ exo_icon_view_queue_draw_item (ExoIconView     *icon_view,
                                ExoIconViewItem *item)
 {
   GdkRectangle rect;
-  gint         focus_width;
-
-  gtk_widget_style_get (GTK_WIDGET (icon_view),
-                        "focus-line-width", &focus_width,
-                        NULL);
+  gint         focus_width = icon_view->priv->style_focus_line_width;
 
   rect.x = item->area.x - focus_width;
   rect.y = item->area.y - focus_width;
@@ -5087,12 +5097,9 @@ exo_icon_view_scroll_to_item (ExoIconView     *icon_view,
                               ExoIconViewItem *item)
 {
   gint x, y;
-  gint focus_width;
+  gint focus_width = icon_view->priv->style_focus_line_width;
   GtkAllocation allocation;
 
-  gtk_widget_style_get (GTK_WIDGET (icon_view),
-                        "focus-line-width", &focus_width,
-                        NULL);
   gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
   gdk_window_get_position (icon_view->priv->bin_window, &x, &y);
@@ -6449,13 +6456,10 @@ exo_icon_view_scroll_to_path (ExoIconView *icon_view,
       if (use_align)
         {
           gint x, y;
-          gint focus_width;
+          gint focus_width = icon_view->priv->style_focus_line_width;
           gfloat offset, value;
           GtkAllocation allocation;
 
-          gtk_widget_style_get (GTK_WIDGET (icon_view),
-                                "focus-line-width", &focus_width,
-                                NULL);
           gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
           gdk_window_get_position (icon_view->priv->bin_window, &x, &y);
