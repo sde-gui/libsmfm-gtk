@@ -1090,20 +1090,7 @@ static void select_invert_list_view(FmFolderModel* model, GtkWidget* view)
 
 static void select_invert_icon_view(FmFolderModel* model, GtkWidget* view)
 {
-    GtkTreePath* path;
-    int i, n;
-    n = gtk_tree_model_iter_n_children(GTK_TREE_MODEL(model), NULL);
-    if(n == 0)
-        return;
-    path = gtk_tree_path_new_first();
-    for( i=0; i<n; ++i, gtk_tree_path_next(path) )
-    {
-        if ( exo_icon_view_path_is_selected(EXO_ICON_VIEW(view), path))
-            exo_icon_view_unselect_path(EXO_ICON_VIEW(view), path);
-        else
-            exo_icon_view_select_path(EXO_ICON_VIEW(view), path);
-    }
-    gtk_tree_path_free(path);
+    exo_icon_view_invert_selection(EXO_ICON_VIEW(view));
 }
 
 static void select_path_list_view(FmFolderModel* model, GtkWidget* view, GtkTreeIter* it)

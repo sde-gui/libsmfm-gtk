@@ -6208,6 +6208,31 @@ exo_icon_view_unselect_all (ExoIconView *icon_view)
 }
 
 
+void
+exo_icon_view_invert_selection(ExoIconView *icon_view)
+{
+  GList *items;
+
+  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+
+  if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
+    return;
+
+  for (items = icon_view->priv->items; items; items = items->next)
+    {
+      ExoIconViewItem *item = items->data;
+
+      if (item->selected)
+          item->selected = FALSE;
+      else
+          item->selected = TRUE;
+      exo_icon_view_queue_draw_item (icon_view, item);
+      exo_icon_view_item_selected_changed (icon_view, item);
+    }
+
+  g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+}
+
 
 /**
  * exo_icon_view_path_is_selected:
