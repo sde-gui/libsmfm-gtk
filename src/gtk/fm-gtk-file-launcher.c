@@ -730,6 +730,8 @@ gboolean fm_launch_search_simple(GtkWindow* parent, GAppLaunchContext* ctx,
     gtk_dialog_set_alternative_button_order(GTK_DIALOG(ui->date_dlg), GTK_RESPONSE_OK, GTK_RESPONSE_CANCEL);
     ui->calendar = GTK_CALENDAR(gtk_builder_get_object(builder, "calendar"));
 
+    gtk_widget_grab_default(GTK_WIDGET(gtk_builder_get_object(builder, "find_button")));
+
     filesearch_glade_connect_signals(builder, ui);
     g_object_unref(builder);
 
