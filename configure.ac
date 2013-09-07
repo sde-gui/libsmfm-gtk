@@ -31,10 +31,10 @@ AC_SUBST(LIBSMFM_LIBS)
 
 # Vala
 AC_ARG_ENABLE(actions,
-    [AC_HELP_STRING([--disable-actions],
-        [disable custom actions in context menu if you have no decent Vala compiler])],
+    [AC_HELP_STRING([--enable-actions],
+        [enable custom actions in context menu])],
     [enable_actions="${enableval}"],
-    [enable_actions=yes]
+    [enable_actions=no]
 )
 if test x"$enable_actions" = xyes; then
     dnl no vala compiler required when sources are from dist tarball
