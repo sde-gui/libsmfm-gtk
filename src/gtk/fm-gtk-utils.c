@@ -584,10 +584,14 @@ struct MountData
     gboolean ret;
 };
 
+static GSList * umounts_in_progress = NULL;
+
 static void on_mount_action_finished(GObject* src, GAsyncResult *res, gpointer user_data)
 {
-    struct MountData* data = user_data;
+    if (!g_slist_find(umounts_in_progress, user_data))
+        return;
 
+    struct MountData* data = user_data;
     switch(data->action)
     {
     case MOUNT_VOLUME:
@@ -635,6 +639,15 @@ static gboolean fm_do_mount(GtkWindow* parent, GObject* obj, MountAction action,
     data->loop = g_main_loop_new (NULL, TRUE);
     data->action = action;
 
+    /*
+        HACK HACK HACK
+        It seems GIO sometimes call on_mount_action_finished twice.
+        To avoid segfault, we have to track if unmounting actually is in progress or not.
+
+        Maybe that is a bug in our code, not GIO. But Thunar experiences the same problem, so...
+    */
+    umounts_in_progress = g_slist_prepend(umounts_in_progress, data);
+
     switch(data->action)
     {
     case MOUNT_VOLUME:
@@ -654,8 +667,11 @@ static gboolean fm_do_mount(GtkWindow* parent, GObject* obj, MountAction action,
     case EJECT_VOLUME:
         {
             GMount* mnt = g_volume_get_mount(G_VOLUME(obj));
-            prepare_unmount(mnt);
-            g_object_unref(mnt);
+            if (mnt)
+            {
+                prepare_unmount(mnt);
+                g_object_unref(mnt);
+            }
             g_volume_eject_with_operation(G_VOLUME(obj), G_MOUNT_UNMOUNT_NONE, op, cancellable, on_mount_action_finished, data);
         }
         break;
@@ -668,6 +684,8 @@ static gboolean fm_do_mount(GtkWindow* parent, GObject* obj, MountAction action,
         g_main_loop_run(data->loop);
         GDK_THREADS_ENTER();
     }
+
+    umounts_in_progress = g_slist_remove(umounts_in_progress, data);
 
     g_main_loop_unref(data->loop);
 
