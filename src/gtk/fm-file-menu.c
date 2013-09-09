@@ -878,3 +878,51 @@ void fm_file_menu_set_folder_func(FmFileMenu* menu, FmLaunchFolderFunc func, gpo
     menu->folder_func = func;
     menu->folder_func_data = user_data;
 }
+
+
+GtkMenu * fm_get_gtk_menu_for_string(GtkWindow* parent, const char * path)
+{
+    if (!path)
+        return NULL;
+
+    GFile * gfile = NULL;
+    GFileInfo * gfile_info = NULL;
+    FmPath * fm_path = NULL;
+    FmFileInfo * fm_file_info = NULL;
+    GtkMenu * popup = NULL;
+
+    gfile = g_file_new_for_path(path);
+    if (!gfile)
+        goto out;
+
+    gfile_info = g_file_query_info(gfile, "standard::*,unix::*,time::*", G_FILE_QUERY_INFO_NONE, NULL, NULL);
+    if (!gfile_info)
+        goto out;
+
+    fm_path = fm_path_new_for_path(path);
+    if (!fm_path)
+        goto out;
+
+    fm_file_info = fm_file_info_new_from_gfileinfo(fm_path, gfile_info);
+    if (!fm_file_info)
+        goto out;
+
+    FmFileMenu * fm_file_menu = fm_file_menu_new_for_file(parent, fm_file_info, NULL, TRUE);
+    if (!fm_file_menu)
+        goto out;
+
+    popup = fm_file_menu_get_menu(fm_file_menu);
+
+out:
+
+    if (fm_file_info)
+        fm_file_info_unref(fm_file_info);
+    if (fm_path)
+        fm_path_unref(fm_path);
+    if (gfile_info)
+        g_object_unref(G_OBJECT(gfile_info));
+    if (gfile)
+        g_object_unref(G_OBJECT(gfile));
+
+    return popup;
+}

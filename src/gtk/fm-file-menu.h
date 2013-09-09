@@ -30,6 +30,8 @@ G_BEGIN_DECLS
 
 typedef struct _FmFileMenu FmFileMenu;
 
+GtkMenu * fm_get_gtk_file_menu_for_string(GtkWindow* parent, const char * url);
+
 FmFileMenu* fm_file_menu_new_for_file(GtkWindow* parent, FmFileInfo* fi, FmPath* cwd, gboolean auto_destroy);
 FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy);
 void fm_file_menu_destroy(FmFileMenu* menu);
