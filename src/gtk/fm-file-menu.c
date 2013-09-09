@@ -880,7 +880,7 @@ void fm_file_menu_set_folder_func(FmFileMenu* menu, FmLaunchFolderFunc func, gpo
 }
 
 
-GtkMenu * fm_get_gtk_menu_for_string(GtkWindow* parent, const char * path)
+GtkMenu * fm_get_gtk_file_menu_for_string(GtkWindow* parent, const char * path)
 {
     if (!path)
         return NULL;
