@@ -101,18 +101,36 @@ GdkPixbuf* fm_pixbuf_from_icon(FmIcon* icon, int size)
     {
         char* str = g_icon_to_string(icon->gicon);
         g_debug("unable to load icon %s", str);
-        /* pix = NULL; */
-#if 0
-        if(g_strcmp0(str, "folder-locked") == 0)
-            pix = gtk_icon_theme_load_icon(gtk_icon_theme_get_default(), "folder",
-                    size, GTK_ICON_LOOKUP_USE_BUILTIN|GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
-            /* FIXME: create locked icon from "folder" one */
+
+        const char * alternative_name = NULL;
+        if (g_strrstr(str, "user-home"))
+            alternative_name = "gtk-home";
+        else if (g_strrstr(str, "folder") || g_strrstr(str, "directory"))
+            alternative_name = "gtk-directory";
         else
-#endif
-            pix = gtk_icon_theme_load_icon(gtk_icon_theme_get_default(), "unknown",
+            alternative_name = "gtk-file";
+
+        if (alternative_name)
+        {
+            g_debug("alternative name %s", alternative_name);
+            pix = gtk_icon_theme_load_icon(gtk_icon_theme_get_default(), alternative_name,
                     size, GTK_ICON_LOOKUP_USE_BUILTIN|GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
-        if(G_LIKELY(pix))
+            if (!pix)
+            {
+                GtkIconSet * icon_set = gtk_icon_factory_lookup_default(alternative_name);
+                if (icon_set)
+                {
+                    GtkStyle * style = gtk_style_new();
+                    pix = gtk_icon_set_render_icon(icon_set, style,
+                        GTK_TEXT_DIR_NONE, GTK_STATE_NORMAL, GTK_ICON_SIZE_MENU, NULL, NULL);
+                    gtk_style_unref(style);
+                }
+            }
+        }
+
+        if (pix)
             g_object_ref(pix);
+
         g_free(str);
     }
 
