@@ -833,7 +833,11 @@ static void update_ui(FmFilePropData* data)
                 if(ficon)
                     icon = ficon->gicon;
             }
-            gtk_label_set_text(data->type, fm_mime_type_get_desc(data->mime_type));
+            gchar * s = g_strdup_printf(_("%s (%s)"),
+                fm_mime_type_get_desc(data->mime_type),
+                fm_mime_type_get_type(data->mime_type));
+            gtk_label_set_text(data->type, s);
+            g_free(s);
         }
 
         if(icon)
