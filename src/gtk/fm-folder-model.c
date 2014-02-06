@@ -57,7 +57,7 @@ struct _FmFolderModel
     GSequence *items;
     GSequence* hidden; /* items hidden by filter */
 
-    gboolean show_hidden : 1;
+    gboolean show_hidden;
     gboolean use_custom_colors;
 
     FmFolderModelCol sort_col;

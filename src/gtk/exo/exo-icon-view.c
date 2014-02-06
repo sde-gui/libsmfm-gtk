@@ -330,7 +330,6 @@ static gboolean             exo_icon_view_select_all_between             (ExoIco
 static ExoIconViewItem *    exo_icon_view_get_item_at_coords             (const ExoIconView      *icon_view,
                                                                           gint                    x,
                                                                           gint                    y,
-                                                                          gboolean                only_in_cell,
                                                                           ExoIconViewCellInfo   **cell_at_pos);
 static void                 exo_icon_view_get_cell_area                  (ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *item,
@@ -2172,7 +2171,7 @@ exo_icon_view_motion_notify_event (GtkWidget      *widget,
     }
   else
     {
-      item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, TRUE, NULL);
+      item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, NULL);
       if (item != icon_view->priv->prelit_item)
         {
           if (G_LIKELY (icon_view->priv->prelit_item != NULL))
@@ -2502,9 +2501,8 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
     {
       item = exo_icon_view_get_item_at_coords (icon_view,
                                                event->x, event->y,
-                                               TRUE,
                                                &info);
-      if (item != NULL)
+      if (item != NULL && info != NULL)
         {
           g_object_get (info->cell, "mode", &mode, NULL);
 
@@ -2603,7 +2601,6 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
         {
           item = exo_icon_view_get_item_at_coords (icon_view,
                                                    event->x, event->y,
-                                                   TRUE,
                                                    NULL);
           if (G_LIKELY (item != NULL))
             {
@@ -2649,7 +2646,7 @@ exo_icon_view_button_release_event (GtkWidget      *widget,
       if (G_UNLIKELY (icon_view->priv->single_click && (event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) == 0))
         {
           /* determine the item at the mouse coords and check if this is the last single clicked one */
-          item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, TRUE, NULL);
+          item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, NULL);
           if (G_LIKELY (item != NULL && item == icon_view->priv->last_single_clicked))
             {
               /* emit an "item-activated" signal for this item */
@@ -3034,6 +3031,18 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
 }
 
 
+static gboolean
+rectangle_hit_test(
+    gint              x,
+    gint              y,
+    gint              width,
+    gint              height,
+    GdkRectangle * box)
+{
+    return 
+        (MIN (x + width , box->x + box->width ) - MAX (x, box->x) > 0 &&
+         MIN (y + height, box->y + box->height) - MAX (y, box->y) > 0);
+}
 
 static gboolean
 exo_icon_view_item_hit_test (ExoIconView      *icon_view,
@@ -3045,6 +3054,14 @@ exo_icon_view_item_hit_test (ExoIconView      *icon_view,
 {
   GList *l;
   GdkRectangle box;
+
+  gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
+
+  if (rectangle_hit_test(x, y, width, height, &item->area))
+  {
+      if (!only_in_cell)
+          return TRUE;
+  }
 
   for (l = icon_view->priv->cell_list; l; l = l->next)
     {
@@ -3059,8 +3076,7 @@ exo_icon_view_item_hit_test (ExoIconView      *icon_view,
 
       box = item->box[info->position];
 
-      if (MIN (x + width, box.x + box.width) - MAX (x, box.x) > 0 &&
-        MIN (y + height, box.y + box.height) - MAX (y, box.y) > 0)
+      if (rectangle_hit_test(x, y, width, height, &box))
         return TRUE;
     }
 
@@ -4193,7 +4209,6 @@ static ExoIconViewItem*
 exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
                                   gint                  x,
                                   gint                  y,
-                                  gboolean              only_in_cell,
                                   ExoIconViewCellInfo **cell_at_pos)
 {
   const ExoIconViewPrivate *priv = icon_view->priv;
@@ -4205,11 +4220,13 @@ exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
 
   update_indeces(icon_view);
 
+  gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
+
   for (items = priv->items; items != NULL; items = items->next)
     {
       item = items->data;
-      if (x >= item->area.x - priv->row_spacing / 2 && x <= item->area.x + item->area.width + priv->row_spacing / 2 &&
-          y >= item->area.y - priv->column_spacing / 2 && y <= item->area.y + item->area.height + priv->column_spacing / 2)
+      if (x >= item->area.x && x <= item->area.x + item->area.width &&
+          y >= item->area.y && y <= item->area.y + item->area.height)
         {
           if (only_in_cell || cell_at_pos)
             {
@@ -4238,9 +4255,6 @@ exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
 
               if (only_in_cell)
                 return NULL;
-
-              if (cell_at_pos != NULL)
-                *cell_at_pos = NULL;
             }
 
           return item;
@@ -5491,7 +5505,7 @@ exo_icon_view_get_path_at_pos (const ExoIconView *icon_view,
   x += gtk_adjustment_get_value(icon_view->priv->hadjustment);
   y += gtk_adjustment_get_value(icon_view->priv->vadjustment);
 
-  item = exo_icon_view_get_item_at_coords (icon_view, x, y, TRUE, NULL);
+  item = exo_icon_view_get_item_at_coords (icon_view, x, y, NULL);
 
   return (item != NULL) ? gtk_tree_path_new_from_indices (item->index, -1) : NULL;
 }
@@ -5530,7 +5544,7 @@ exo_icon_view_get_item_at_pos (const ExoIconView *icon_view,
 
   update_indeces(icon_view);
 
-  item = exo_icon_view_get_item_at_coords (icon_view, x, y, TRUE, &info);
+  item = exo_icon_view_get_item_at_coords (icon_view, x, y, &info);
 
   if (G_LIKELY (path != NULL))
     *path = (item != NULL) ? gtk_tree_path_new_from_indices (item->index, -1) : NULL;
@@ -7332,7 +7346,6 @@ exo_icon_view_drag_begin (GtkWidget      *widget,
   item = exo_icon_view_get_item_at_coords (icon_view,
                                            icon_view->priv->press_start_x,
                                            icon_view->priv->press_start_y,
-                                           TRUE,
                                            NULL);
 
   _exo_return_if_fail (item != NULL);
@@ -7909,7 +7922,7 @@ exo_icon_view_get_dest_item_at_pos (ExoIconView              *icon_view,
   if (G_LIKELY (path != NULL))
     *path = NULL;
 
-  item = exo_icon_view_get_item_at_coords (icon_view, drag_x, drag_y, FALSE, NULL);
+  item = exo_icon_view_get_item_at_coords (icon_view, drag_x, drag_y, NULL);
 
   if (G_UNLIKELY (item == NULL))
     return FALSE;
@@ -10919,7 +10932,7 @@ exo_icon_view_accessible_ref_accessible_at_point (AtkComponent *component,
 
   icon_view = EXO_ICON_VIEW (widget);
   atk_component_get_extents (component, &x_pos, &y_pos, NULL, NULL, coord_type);
-  item = exo_icon_view_get_item_at_coords (icon_view, x - x_pos, y - y_pos, TRUE, NULL);
+  item = exo_icon_view_get_item_at_coords (icon_view, x - x_pos, y - y_pos, NULL);
   if (item)
     return exo_icon_view_accessible_ref_child (ATK_OBJECT (component), item->index);
 
