@@ -287,12 +287,10 @@ static void                 exo_icon_view_start_rubberbanding            (ExoIco
                                                                           gint                    y);
 static void                 exo_icon_view_stop_rubberbanding             (ExoIconView            *icon_view);
 static void                 exo_icon_view_update_rubberband_selection    (ExoIconView            *icon_view);
-static gboolean             exo_icon_view_item_hit_test                  (ExoIconView            *icon_view,
+static gboolean             exo_icon_view_item_hit_test                  (const ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *item,
-                                                                          gint                    x,
-                                                                          gint                    y,
-                                                                          gint                    width,
-                                                                          gint                    height);
+                                                                          const GdkRectangle           *test_box,
+                                                                          ExoIconViewCellInfo   **cell_at_pos);
 static gboolean             exo_icon_view_unselect_all_internal          (ExoIconView            *icon_view);
 static void                 exo_icon_view_calculate_item_size            (ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *item);
@@ -2502,15 +2500,17 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
       item = exo_icon_view_get_item_at_coords (icon_view,
                                                event->x, event->y,
                                                &info);
-      if (item != NULL && info != NULL)
+      if (item != NULL)
         {
-          g_object_get (info->cell, "mode", &mode, NULL);
+          cursor_cell = -1;
+          if (info)
+            {
+              g_object_get (info->cell, "mode", &mode, NULL);
 
-          if (mode == GTK_CELL_RENDERER_MODE_ACTIVATABLE ||
-              mode == GTK_CELL_RENDERER_MODE_EDITABLE)
-            cursor_cell = g_list_index (icon_view->priv->cell_list, info);
-          else
-            cursor_cell = -1;
+              if (mode == GTK_CELL_RENDERER_MODE_ACTIVATABLE ||
+                  mode == GTK_CELL_RENDERER_MODE_EDITABLE)
+                cursor_cell = g_list_index (icon_view->priv->cell_list, info);
+            }
 
           exo_icon_view_scroll_to_item (icon_view, item);
 
@@ -2572,12 +2572,15 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
           /* cancel the current editing, if it exists */
           exo_icon_view_stop_editing (icon_view, TRUE);
 
-          if (mode == GTK_CELL_RENDERER_MODE_ACTIVATABLE)
-            exo_icon_view_item_activate_cell (icon_view, item, info,
-                                              (GdkEvent *)event);
-          else if (mode == GTK_CELL_RENDERER_MODE_EDITABLE)
-            exo_icon_view_start_editing (icon_view, item, info,
-                                         (GdkEvent *)event);
+          if (info)
+            {
+              if (mode == GTK_CELL_RENDERER_MODE_ACTIVATABLE)
+                exo_icon_view_item_activate_cell (icon_view, item, info,
+                                                  (GdkEvent *)event);
+              else if (mode == GTK_CELL_RENDERER_MODE_EDITABLE)
+                exo_icon_view_start_editing (icon_view, item, info,
+                                             (GdkEvent *)event);
+            }
         }
       else
         {
@@ -3014,7 +3017,8 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
     {
       item = EXO_ICON_VIEW_ITEM (lp->data);
 
-      is_in = exo_icon_view_item_hit_test (icon_view, item, x, y, width, height);
+      GdkRectangle test_box = {x, y, width, height};
+      is_in = exo_icon_view_item_hit_test (icon_view, item, &test_box, NULL);
 
       selected = is_in ^ item->selected_before_rubberbanding;
 
@@ -3032,55 +3036,80 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
 
 
 static gboolean
-rectangle_hit_test(
-    gint              x,
-    gint              y,
-    gint              width,
-    gint              height,
-    GdkRectangle * box)
+rectangle_hit_test(const GdkRectangle * box1, const GdkRectangle * box2)
 {
     return 
-        (MIN (x + width , box->x + box->width ) - MAX (x, box->x) > 0 &&
-         MIN (y + height, box->y + box->height) - MAX (y, box->y) > 0);
+        (MIN (box1->x + box1->width , box2->x + box2->width ) - MAX (box1->x, box2->x) > 0 &&
+         MIN (box1->y + box1->height, box2->y + box2->height) - MAX (box1->y, box2->y) > 0);
 }
 
+
+
 static gboolean
-exo_icon_view_item_hit_test (ExoIconView      *icon_view,
-                             ExoIconViewItem  *item,
-                             gint              x,
-                             gint              y,
-                             gint              width,
-                             gint              height)
+exo_icon_view_item_hit_test (const ExoIconView          *icon_view,
+                                   ExoIconViewItem      *item,
+                             const GdkRectangle         *test_box,
+                                   ExoIconViewCellInfo **cell_at_pos)
 {
-  GList *l;
-  GdkRectangle box;
+    gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
 
-  gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
+    if (!rectangle_hit_test(test_box, &item->area))
+        return FALSE;
 
-  if (rectangle_hit_test(x, y, width, height, &item->area))
-  {
-      if (!only_in_cell)
-          return TRUE;
-  }
+    if (cell_at_pos)
+        *cell_at_pos = NULL;
 
-  for (l = icon_view->priv->cell_list; l; l = l->next)
-    {
-      ExoIconViewCellInfo *info = (ExoIconViewCellInfo *)l->data;
-
-      if (!gtk_cell_renderer_get_visible(info->cell))
-        continue;
-
-      /* libfm: bug #3390778: item->box isn't allocated yet here! bad design! */
-      if (!item->box)
-        continue;
-
-      box = item->box[info->position];
-
-      if (rectangle_hit_test(x, y, width, height, &box))
+    if (!only_in_cell && !only_in_cell)
         return TRUE;
+
+    exo_icon_view_set_cell_data (icon_view, item, FALSE);
+
+    GList *l;
+    for (l = icon_view->priv->cell_list; l; l = l->next)
+    {
+        ExoIconViewCellInfo *info = (ExoIconViewCellInfo *)l->data;
+
+        if (!gtk_cell_renderer_get_visible(info->cell))
+            continue;
+
+        /* libfm: bug #3390778: item->box isn't allocated yet here! bad design! */
+        if (!item->box)
+            break;
+
+        if (rectangle_hit_test(test_box, &(item->box[info->position])))
+        {
+            if (cell_at_pos)
+                *cell_at_pos = info;
+            return TRUE;
+        }
     }
 
-  return FALSE;
+    return !only_in_cell;
+}
+
+
+
+static ExoIconViewItem*
+exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
+                                  gint                  x,
+                                  gint                  y,
+                                  ExoIconViewCellInfo **cell_at_pos)
+{
+    const ExoIconViewPrivate *priv = icon_view->priv;
+
+    GdkRectangle test_box = {x, y, 1, 1};
+
+    update_indeces(icon_view);
+
+    const GList * items;
+    for (items = priv->items; items != NULL; items = items->next)
+    {
+        ExoIconViewItem * item = items->data;
+        if (exo_icon_view_item_hit_test(icon_view, item, &test_box, cell_at_pos))
+            return item;
+    }
+
+    return NULL;
 }
 
 
@@ -4201,67 +4230,6 @@ exo_icon_view_set_cursor_item (ExoIconView     *icon_view,
       atk_object_notify_state_change (item_obj, ATK_STATE_FOCUSED, TRUE);
       g_object_unref (item_obj);
     }
-}
-
-
-
-static ExoIconViewItem*
-exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
-                                  gint                  x,
-                                  gint                  y,
-                                  ExoIconViewCellInfo **cell_at_pos)
-{
-  const ExoIconViewPrivate *priv = icon_view->priv;
-  ExoIconViewCellInfo      *info;
-  ExoIconViewItem          *item;
-  GdkRectangle              box;
-  const GList              *items;
-  const GList              *lp;
-
-  update_indeces(icon_view);
-
-  gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
-
-  for (items = priv->items; items != NULL; items = items->next)
-    {
-      item = items->data;
-      if (x >= item->area.x && x <= item->area.x + item->area.width &&
-          y >= item->area.y && y <= item->area.y + item->area.height)
-        {
-          if (only_in_cell || cell_at_pos)
-            {
-              exo_icon_view_set_cell_data (icon_view, item, FALSE);
-              for (lp = priv->cell_list; lp != NULL; lp = lp->next)
-                {
-                  /* check if the cell is visible */
-                  info = (ExoIconViewCellInfo *) lp->data;
-                  if (!gtk_cell_renderer_get_visible(info->cell))
-                    continue;
-
-                  box = item->box[info->position];
-                  if ((x >= box.x && x <= box.x + box.width &&
-                       y >= box.y && y <= box.y + box.height) ||
-                      (x >= box.x  &&
-                       x <= box.x + box.width &&
-                       y >= box.y &&
-                       y <= box.y + box.height))
-                    {
-                      if (cell_at_pos != NULL)
-                        *cell_at_pos = info;
-
-                      return item;
-                    }
-                }
-
-              if (only_in_cell)
-                return NULL;
-            }
-
-          return item;
-        }
-    }
-
-  return NULL;
 }
 
 
