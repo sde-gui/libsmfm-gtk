@@ -219,7 +219,6 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     PangoWrapMode wrap_mode;
     gint wrap_width;
     PangoAlignment alignment;
-    gfloat xalign, yalign;
     gint xpad, ypad;
 
     g_object_get(G_OBJECT(cell),
@@ -234,8 +233,6 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
                  "foreground-gdk", &foreground_color,
 #endif
                  NULL);
-
-    gtk_cell_renderer_get_alignment(cell, &xalign, &yalign);
 
     /* Calculate the real x and y offsets. */
 /*
@@ -360,8 +357,8 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
         state = GTK_STATE_NORMAL;
 #endif
 
-    int x_align_offset = xalign * (cell_area->width  - layout_rect.width);
-    int y_align_offset = yalign * (cell_area->height - layout_rect.height);
+    int x_align_offset = 0.5 * (cell_area->width  - layout_rect.width);
+    int y_align_offset = 0.5 * (cell_area->height - layout_rect.height);
 
 #if GTK_CHECK_VERSION(3, 0, 0)
     gtk_render_layout(style, cr,

@@ -590,7 +590,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "max-height", fm_config->show_full_names ? 0 : 70,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
-                         "yalign", 0.5,
+                         "yalign", 0.0,
                          NULL );
         }
         else
@@ -603,7 +603,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "max-height", fm_config->show_full_names ? 0 : 90,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
-                         "yalign", 0.5,
+                         "yalign", 0.0,
                          NULL );
         }
     }
