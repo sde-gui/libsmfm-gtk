@@ -407,12 +407,19 @@ static void set_icon_size(FmStandardView* fv, guint icon_size)
 
     if( fv->mode != FM_FV_LIST_VIEW ) /* this is an ExoIconView */
     {
-        /* set row spacing in range 2...12 pixels */
-        gint c_size = MIN(12, 2 + icon_size / 8);
-        exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), c_size);
-        exo_icon_view_set_column_spacing(EXO_ICON_VIEW(fv->view), c_size);
-
+        gint row_spacing = MIN(12, 2 + icon_size / 8);
+        gint col_spacing = MIN(12, 2 + icon_size / 8);
         gint padding = MIN(6, 2 + icon_size / 8);
+
+        if (fv->mode == FM_FV_COMPACT_VIEW)
+        {
+            row_spacing = MIN(1, icon_size * 0.1);
+            col_spacing = MIN(1, icon_size * 0.1);
+            padding = MIN(1, icon_size * 0.1);
+        }
+
+        exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), row_spacing);
+        exo_icon_view_set_column_spacing(EXO_ICON_VIEW(fv->view), col_spacing);
         exo_icon_view_set_item_padding(EXO_ICON_VIEW(fv->view), padding);
     }
 }
@@ -563,7 +570,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
 
         render = fm_cell_renderer_text_new();
         g_object_set((GObject*)render,
-                     "xalign", 1.0, /* FIXME: why this needs to be 1.0? */
+                     "xalign", 0.5,
                      "yalign", 0.5,
                      NULL );
         exo_icon_view_set_layout_mode( (ExoIconView*)fv->view, EXO_ICON_VIEW_LAYOUT_COLS );
@@ -583,7 +590,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "max-height", fm_config->show_full_names ? 0 : 70,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
-                         "yalign", 0.0,
+                         "yalign", 0.5,
                          NULL );
         }
         else
@@ -596,7 +603,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
                          "max-height", fm_config->show_full_names ? 0 : 90,
                          "alignment", PANGO_ALIGN_CENTER,
                          "xalign", 0.5,
-                         "yalign", 0.0,
+                         "yalign", 0.5,
                          NULL );
         }
     }
@@ -919,6 +926,7 @@ static GtkTreeViewColumn* create_list_view_column(FmStandardView* fv,
         break;
     case FM_FOLDER_MODEL_COL_SIZE:
         g_object_set(render, "xalign", 1.0, NULL);
+        g_object_set(render, "yalign", 0.0, NULL);
     default:
         if(set->width < 0)
             info->width = fm_folder_model_col_get_default_width(fv->model, col_id);

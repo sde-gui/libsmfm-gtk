@@ -213,11 +213,8 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 #endif
     gboolean foreground_set = FALSE;
     gchar* text;
-    gint text_width;
-    gint text_height;
     gint x_offset;
     gint y_offset;
-    gint x_align_offset;
     GdkRectangle rect;
     PangoWrapMode wrap_mode;
     gint wrap_width;
@@ -238,14 +235,24 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 #endif
                  NULL);
 
-#if 0
-    /* FIXME: this is time-consuming since it invokes pango_layout.
-     *        if we want to fix this, we must implement the whole cell
-     *        renderer ourselves instead of derived from GtkCellRendererText. */
-    PangoContext* context = gtk_widget_get_pango_context(widget);
+    gtk_cell_renderer_get_alignment(cell, &xalign, &yalign);
 
-    PangoLayout* layout = pango_layout_new(context);
-#endif
+    /* Calculate the real x and y offsets. */
+/*
+    gtk_cell_renderer_get_padding(cell, &xpad, &ypad);
+    x_offset = ((gtk_widget_get_direction(widget) == GTK_TEXT_DIR_RTL) ? (1.0 - xalign) : xalign)
+             * (cell_area->width - text_width - (2 * xpad));
+    x_offset = MAX(x_offset, 0);
+
+    y_offset = yalign * (cell_area->height - text_height - (2 * ypad));
+    y_offset = MAX (y_offset, 0);
+*/
+    x_offset = 0;
+    y_offset = 0;
+
+    xpad = 0;
+    ypad = 0;
+
 
     PangoLayout* layout = gtk_widget_create_pango_layout(widget, text);
 
@@ -271,45 +278,39 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     pango_layout_set_alignment(layout, alignment);
 
     /* Setup the wrapping. */
+    pango_layout_set_wrap(layout, wrap_mode);
     if (wrap_width < 0)
     {
-        pango_layout_set_width(layout, -1);
-        pango_layout_set_wrap(layout, PANGO_WRAP_CHAR);
+        pango_layout_set_width(layout, cell_area->width * PANGO_SCALE);
     }
     else
     {
-        pango_layout_set_width(layout, wrap_width * PANGO_SCALE);
-        pango_layout_set_wrap(layout, wrap_mode);
-        if(self->height > 0)
-        {
-            /* FIXME: add custom ellipsize from object? */
-            pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
-            pango_layout_set_height(layout, self->height * PANGO_SCALE);
-        }
-        else
-            pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_NONE);
+        int w = (cell_area->width < wrap_width) ? cell_area->width : wrap_width;
+        pango_layout_set_width(layout, w * PANGO_SCALE);
     }
+
+    if (self->height > 0)
+    {
+        /* FIXME: add custom ellipsize from object? */
+        pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
+        pango_layout_set_height(layout, self->height * PANGO_SCALE);
+    }
+    else
+        pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_NONE);
 
     pango_layout_set_auto_dir(layout, TRUE);
 
-    pango_layout_get_pixel_size(layout, &text_width, &text_height);
+    PangoRectangle layout_rect;
+    pango_layout_get_pixel_extents(layout, NULL, &layout_rect);
 
-    gtk_cell_renderer_get_alignment(cell, &xalign, &yalign);
-    gtk_cell_renderer_get_padding(cell, &xpad, &ypad);
-    /* Calculate the real x and y offsets. */
-    x_offset = ((gtk_widget_get_direction(widget) == GTK_TEXT_DIR_RTL) ? (1.0 - xalign) : xalign)
-             * (cell_area->width - text_width - (2 * xpad));
-    x_offset = MAX(x_offset, 0);
 
-    y_offset = yalign * (cell_area->height - text_height - (2 * ypad));
-    y_offset = MAX (y_offset, 0);
 
-    if(flags & (GTK_CELL_RENDERER_SELECTED|GTK_CELL_RENDERER_FOCUSED))
+//    if(flags & (GTK_CELL_RENDERER_SELECTED|GTK_CELL_RENDERER_FOCUSED))
     {
         rect.x = cell_area->x + x_offset;
         rect.y = cell_area->y + y_offset;
-        rect.width = text_width + (2 * xpad);
-        rect.height = text_height + (2 * ypad);
+        rect.width = cell_area->width;
+        rect.height = cell_area->height;
     }
 
 #if GTK_CHECK_VERSION(3, 0, 0)
@@ -347,7 +348,6 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
         }
 #endif
         gdk_cairo_rectangle(cr, &rect);
-
         cairo_set_source_rgb(cr, clr.red / 65535., clr.green / 65535., clr.blue / 65535.);
         cairo_fill (cr);
 
@@ -360,17 +360,18 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
         state = GTK_STATE_NORMAL;
 #endif
 
-    x_align_offset = (alignment == PANGO_ALIGN_CENTER) ? (wrap_width - text_width) / 2 : 0;
+    int x_align_offset = xalign * (cell_area->width  - layout_rect.width);
+    int y_align_offset = yalign * (cell_area->height - layout_rect.height);
 
 #if GTK_CHECK_VERSION(3, 0, 0)
     gtk_render_layout(style, cr,
-                      cell_area->x + x_offset + xpad - x_align_offset,
-                      cell_area->y + y_offset + ypad, layout);
+                      cell_area->x + x_offset + xpad + x_align_offset - layout_rect.x,
+                      cell_area->y + y_offset + ypad + y_align_offset - layout_rect.y, layout);
 #else
     gtk_paint_layout(style, window, state, TRUE,
                      expose_area, widget, "cellrenderertext",
-                     cell_area->x + x_offset + xpad - x_align_offset,
-                     cell_area->y + y_offset + ypad, layout);
+                     cell_area->x + x_offset + xpad + x_align_offset - layout_rect.x,
+                     cell_area->y + y_offset + ypad + y_align_offset - layout_rect.y, layout);
 #endif
 
     g_object_unref(layout);
@@ -409,8 +410,8 @@ static void fm_cell_renderer_text_get_size(GtkCellRenderer            *cell,
 
     GTK_CELL_RENDERER_CLASS(fm_cell_renderer_text_parent_class)->get_size(cell, widget, rectangle, x_offset, y_offset, width, height);
     g_object_get(G_OBJECT(cell), "wrap-width", &wrap_width, NULL);
-    if (wrap_width > 0)
-        *width = wrap_width;
+/*    if (wrap_width > 0 && *width > wrap_width)
+        *width = wrap_width;*/
     if (self->height > 0)
     {
         if(*height > self->height)
