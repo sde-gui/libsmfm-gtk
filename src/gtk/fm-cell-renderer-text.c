@@ -183,6 +183,42 @@ static void add_attr(PangoAttrList * attr_list, PangoAttribute * attr)
   pango_attr_list_insert(attr_list, attr);
 }
 
+static PangoLayout * get_layout(FmCellRendererText * self, GtkWidget * widget, GdkRectangle * available_room)
+{
+    gchar * text;
+    PangoWrapMode wrap_mode;
+    gint wrap_width;
+    PangoAlignment alignment;
+
+    g_object_get(G_OBJECT(self),
+                 "wrap-mode" , &wrap_mode,
+                 "wrap-width", &wrap_width,
+                 "alignment" , &alignment,
+                 "text", &text,
+                 NULL);
+
+    PangoLayout * layout = gtk_widget_create_pango_layout(widget, text);
+
+    pango_layout_set_alignment(layout, alignment);
+
+    /* Setup the wrapping. */
+    pango_layout_set_wrap(layout, wrap_mode);
+    if (wrap_width < 0 && available_room && available_room->width < wrap_width)
+        wrap_width = available_room->width;
+    pango_layout_set_width(layout, wrap_width * PANGO_SCALE);
+
+    pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
+    if (self->height > 0)
+    {
+        pango_layout_set_height(layout, self->height * PANGO_SCALE);
+    }
+
+    pango_layout_set_auto_dir(layout, TRUE);
+
+    g_free(text);
+
+    return layout;
+}
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
@@ -212,20 +248,12 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     GdkColor * foreground_color = NULL;
 #endif
     gboolean foreground_set = FALSE;
-    gchar* text;
     gint x_offset;
     gint y_offset;
     GdkRectangle rect;
-    PangoWrapMode wrap_mode;
-    gint wrap_width;
-    PangoAlignment alignment;
     gint xpad, ypad;
 
     g_object_get(G_OBJECT(cell),
-                 "wrap-mode" , &wrap_mode,
-                 "wrap-width", &wrap_width,
-                 "alignment" , &alignment,
-                 "text", &text,
                  "foreground-set", &foreground_set,
 #if GTK_CHECK_VERSION(3, 0, 0)
                  "foreground-rgba", &foreground_color,
@@ -251,7 +279,7 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     ypad = 0;
 
 
-    PangoLayout* layout = gtk_widget_create_pango_layout(widget, text);
+    PangoLayout* layout = get_layout(self, widget, cell_area);
 
     if (foreground_set && foreground_color && (flags & GTK_CELL_RENDERER_SELECTED) == 0)
     {
@@ -272,34 +300,8 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
         pango_attr_list_unref(attr_list);
     }
 
-    pango_layout_set_alignment(layout, alignment);
-
-    /* Setup the wrapping. */
-    pango_layout_set_wrap(layout, wrap_mode);
-    if (wrap_width < 0)
-    {
-        pango_layout_set_width(layout, cell_area->width * PANGO_SCALE);
-    }
-    else
-    {
-        int w = (cell_area->width < wrap_width) ? cell_area->width : wrap_width;
-        pango_layout_set_width(layout, w * PANGO_SCALE);
-    }
-
-    if (self->height > 0)
-    {
-        /* FIXME: add custom ellipsize from object? */
-        pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
-        pango_layout_set_height(layout, self->height * PANGO_SCALE);
-    }
-    else
-        pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_NONE);
-
-    pango_layout_set_auto_dir(layout, TRUE);
-
     PangoRectangle layout_rect;
     pango_layout_get_pixel_extents(layout, NULL, &layout_rect);
-
 
     {
         rect.x = cell_area->x + x_offset;
@@ -382,10 +384,11 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 #endif
     }
 
+    gchar * text = NULL;
     if(flags & GTK_CELL_RENDERER_PRELIT) /* hovered */
-        g_object_set(G_OBJECT(widget), "tooltip-text", text, NULL);
-    else
-        g_object_set(G_OBJECT(widget), "tooltip-text", NULL, NULL);
+        g_object_get(G_OBJECT(cell), "text", &text, NULL);
+    g_object_set(G_OBJECT(widget), "tooltip-text", text, NULL);
+
     g_free(text);
 }
 
@@ -401,20 +404,55 @@ static void fm_cell_renderer_text_get_size(GtkCellRenderer            *cell,
                                            gint                       *height)
 {
     FmCellRendererText *self = FM_CELL_RENDERER_TEXT(cell);
-    gint wrap_width;
+    PangoLayout * layout = NULL;
 
-    GTK_CELL_RENDERER_CLASS(fm_cell_renderer_text_parent_class)->get_size(cell, widget, rectangle, x_offset, y_offset, width, height);
-    g_object_get(G_OBJECT(cell), "wrap-width", &wrap_width, NULL);
-/*    if (wrap_width > 0 && *width > wrap_width)
-        *width = wrap_width;*/
-    if (self->height > 0)
+    int xpad = 2, ypad = 2;
+
+    if (rectangle)
     {
-        if(*height > self->height)
-            *height = self->height;
+        GdkRectangle available_room = *rectangle;
+        if (available_room.width - xpad * 2 > 0)
+            available_room.width -= xpad * 2;
+        else
+            available_room.width = 0;
+
+        if (available_room.height - ypad * 2 > 0)
+            available_room.height -= ypad * 2;
+        else
+            available_room.height = 0;
+        layout = get_layout(self, widget, &available_room);
     }
+    else
+    {
+        layout = get_layout(self, widget, NULL);
+    }
+
+    PangoRectangle layout_rect;
+    pango_layout_get_pixel_extents(layout, NULL, &layout_rect);
+
+    g_object_unref(layout);
+
+    if (x_offset)
+        *x_offset = layout_rect.x + xpad;
+
+    if (y_offset)
+        *y_offset = layout_rect.y + ypad;
+
+    if (height)
+        *height = layout_rect.height + ypad * 2;
+
+    if (width)
+        *width = layout_rect.width + xpad * 2;
+
+    if (height)
+        *height = layout_rect.height + ypad * 2;
+
 }
 
 #if GTK_CHECK_VERSION(3, 0, 0)
+
+FIXME!
+#if 0
 static void fm_cell_renderer_text_get_preferred_width(GtkCellRenderer *cell,
                                                       GtkWidget *widget,
                                                       gint *minimum_size,
@@ -459,4 +497,7 @@ static void fm_cell_renderer_text_get_preferred_height_for_width(GtkCellRenderer
 {
     fm_cell_renderer_text_get_preferred_height(cell, widget, minimum_height, natural_height);
 }
+
+#endif
+
 #endif

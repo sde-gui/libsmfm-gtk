@@ -452,8 +452,6 @@ static void on_small_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
 
 static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv)
 {
-    /* FIXME: thumbnail and icons should have different sizes */
-    /* maybe a separate API: fm_folder_model_set_thumbnail_size() */
     update_icon_size(fv);
 }
 
