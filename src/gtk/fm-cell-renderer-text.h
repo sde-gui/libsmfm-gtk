@@ -46,7 +46,7 @@ struct _FmCellRendererText
 	/* add your public declarations here */
 	/*< private >*/
 	gpointer _reserved1;
-	gint height; /* "max-height" - height in pixels */
+	gint max_height;
 };
 
 struct _FmCellRendererTextClass

@@ -464,9 +464,11 @@ static void on_show_full_names_changed(FmConfig* cfg, FmStandardView* fv)
     if (!cfg->show_full_names)
     {
         if(fv->mode == FM_FV_ICON_VIEW)
-            max_height = 50;
+            //max_height = 50;
+            max_height = -2;
         else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
-            max_height = 80;
+            max_height = -1;
+            //max_height = 80;
     }
 
     g_object_set((GObject*)fv->renderer_text, "max-height", max_height, NULL);

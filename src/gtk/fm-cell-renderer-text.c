@@ -122,14 +122,14 @@ static void fm_cell_renderer_text_class_init(FmCellRendererTextClass *klass)
                                     g_param_spec_int("max-height",
                                                      "Maximum_height",
                                                      "Maximum height",
-                                                     -1, 2048, -1,
+                                                     -2048, 2048, 0,
                                                      G_PARAM_READWRITE));
 }
 
 
 static void fm_cell_renderer_text_init(FmCellRendererText *self)
 {
-    self->height = -1;
+    self->max_height = 0;
 }
 
 /**
@@ -153,7 +153,7 @@ static void fm_cell_renderer_text_get_property(GObject *object, guint param_id,
     switch(param_id)
     {
     case PROP_HEIGHT:
-        g_value_set_int(value, self->height);
+        g_value_set_int(value, self->max_height);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, param_id, psec);
@@ -168,7 +168,7 @@ static void fm_cell_renderer_text_set_property(GObject *object, guint param_id,
     switch(param_id)
     {
     case PROP_HEIGHT:
-        self->height = g_value_get_int(value);
+        self->max_height = g_value_get_int(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, param_id, psec);
@@ -208,9 +208,13 @@ static PangoLayout * get_layout(FmCellRendererText * self, GtkWidget * widget, G
     pango_layout_set_width(layout, wrap_width * PANGO_SCALE);
 
     pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
-    if (self->height > 0)
+    if (self->max_height > 0)
     {
-        pango_layout_set_height(layout, self->height * PANGO_SCALE);
+        pango_layout_set_height(layout, self->max_height * PANGO_SCALE);
+    }
+    else if (self->max_height < 0)
+    {
+        pango_layout_set_height(layout, self->max_height);
     }
 
     pango_layout_set_auto_dir(layout, TRUE);
@@ -480,12 +484,12 @@ static void fm_cell_renderer_text_get_preferred_height(GtkCellRenderer *cell,
     FmCellRendererText *self = FM_CELL_RENDERER_TEXT(cell);
 
     GTK_CELL_RENDERER_CLASS(fm_cell_renderer_text_parent_class)->get_preferred_height(cell, widget, minimum_size, natural_size);
-    if (self->height > 0)
+    if (self->max_height > 0)
     {
-        if(natural_size && *natural_size > self->height)
-            *natural_size = self->height;
-        if(minimum_size && *minimum_size > self->height)
-            *minimum_size = self->height;
+        if(natural_size && *natural_size > self->max_height)
+            *natural_size = self->max_height;
+        if(minimum_size && *minimum_size > self->max_height)
+            *minimum_size = self->max_height;
     }
 }
 
