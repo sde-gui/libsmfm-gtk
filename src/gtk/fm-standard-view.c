@@ -53,9 +53,49 @@
 #include "fm-dnd-dest.h"
 #include "fm-dnd-auto-scroll.h"
 
+typedef enum _FmViewType {
+    FmViewType_Icon,
+    FmViewType_Tree
+} FmViewType;
+
+typedef struct _ModeSettings
+{
+    FmViewType type;
+
+    long icon_size;
+
+    long   item_width_min;
+    double item_width_mult;
+
+    long   wrap_width_min;
+    double wrap_width_mult;
+
+    long   row_spacing_min;
+    double row_spacing_mult;
+
+    long   col_spacing_min;
+    double col_spacing_mult;
+
+    long   padding_min;
+    double padding_mult;
+
+    long cell_spacing;
+
+    PangoWrapMode wrap_mode;
+    PangoAlignment text_alignment;
+    long text_max_height;
+
+    gboolean horizontal_orientation;
+    ExoIconViewLayoutMode icon_layout_mode;
+} ModeSettings;
+
+ModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
+
 struct _FmStandardView
 {
     GtkScrolledWindow parent;
+
+    ModeSettings mode_settings;
 
     FmStandardViewMode mode;
     GtkSelectionMode sel_mode;
@@ -126,6 +166,8 @@ static void on_single_click_changed(FmConfig* cfg, FmStandardView* fv);
 static void on_big_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
 static void on_small_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
 static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv);
+
+static void apply_mode_settings(FmStandardView* self);
 
 static FmFolderViewColumnInfo* _sv_column_info_new(FmFolderModelCol col_id)
 {
@@ -383,8 +425,10 @@ static void fm_standard_view_dispose(GObject *object)
     (* G_OBJECT_CLASS(fm_standard_view_parent_class)->dispose)(object);
 }
 
-static void set_icon_size(FmStandardView* fv, guint icon_size)
+static void apply_icon_size(FmStandardView* fv, guint icon_size)
 {
+    fv->mode_settings.icon_size = icon_size;
+
     g_object_set(G_OBJECT(fv->renderer_pixbuf), "visible", icon_size > 0, NULL);
 
     if (icon_size < 1)
@@ -395,32 +439,21 @@ static void set_icon_size(FmStandardView* fv, guint icon_size)
     if (fv->model)
         fm_folder_model_set_icon_size(fv->model, icon_size);
 
-    int item_width = 0;
-
-    if (fv->mode == FM_FV_ICON_VIEW)
-        item_width = icon_size + 40;
-    else if (fv->mode ==FM_FV_THUMBNAIL_VIEW)
-        item_width = MAX(icon_size, 96);
+    int item_width   = MAX(fv->mode_settings.item_width_min , icon_size * fv->mode_settings.item_width_mult );
+    int row_spacing  = MAX(fv->mode_settings.row_spacing_min, icon_size * fv->mode_settings.row_spacing_mult);
+    int col_spacing  = MAX(fv->mode_settings.col_spacing_min, icon_size * fv->mode_settings.col_spacing_mult);
+    int padding      = MAX(fv->mode_settings.padding_min    , icon_size * fv->mode_settings.padding_mult    );
+    int cell_spacing = fv->mode_settings.cell_spacing;
 
     if (item_width)
         g_object_set(G_OBJECT(fv->renderer_text), "wrap-width", item_width, NULL);
 
-    if( fv->mode != FM_FV_LIST_VIEW ) /* this is an ExoIconView */
+    if (fv->mode_settings.type == FmViewType_Icon)
     {
-        gint row_spacing = MIN(12, 2 + icon_size / 8);
-        gint col_spacing = MIN(12, 2 + icon_size / 8);
-        gint padding = MIN(6, 2 + icon_size / 8);
-
-        if (fv->mode == FM_FV_COMPACT_VIEW)
-        {
-            row_spacing = MIN(1, icon_size * 0.1);
-            col_spacing = MIN(1, icon_size * 0.1);
-            padding = MIN(0, icon_size * 0.1);
-        }
-
         exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), row_spacing);
         exo_icon_view_set_column_spacing(EXO_ICON_VIEW(fv->view), col_spacing);
         exo_icon_view_set_item_padding(EXO_ICON_VIEW(fv->view), padding);
+        exo_icon_view_set_spacing(EXO_ICON_VIEW(fv->view), cell_spacing);
     }
 }
 
@@ -437,7 +470,7 @@ static void update_icon_size(FmStandardView* fv)
     else if (fv->mode == FM_FV_LIST_VIEW)
         icon_size = fm_config->small_icon_size;
 
-    set_icon_size(fv, icon_size);
+    apply_icon_size(fv, icon_size);
 }
 
 static void on_big_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
@@ -457,22 +490,7 @@ static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv)
 
 static void on_show_full_names_changed(FmConfig* cfg, FmStandardView* fv)
 {
-    g_return_if_fail(fv->renderer_text);
-
-    int max_height = 0;
-
-    if (!cfg->show_full_names)
-    {
-        if(fv->mode == FM_FV_ICON_VIEW)
-            //max_height = 50;
-            max_height = -2;
-        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
-            max_height = -1;
-            //max_height = 80;
-    }
-
-    g_object_set((GObject*)fv->renderer_text, "max-height", max_height, NULL);
-
+    apply_mode_settings(fv);
     /* FIXME: does it require redraw request? */
 }
 
@@ -554,85 +572,90 @@ static gboolean on_drag_motion(GtkWidget *dest_widget,
     return ret;
 }
 
+static void apply_mode_settings(FmStandardView* self)
+{
+    if (self->mode_settings.type != FmViewType_Icon)
+        return;
+
+    double xalign;
+    double yalign;
+    GtkOrientation orientation;
+
+    if (self->mode_settings.horizontal_orientation)
+    {
+        xalign = 0.5;
+        yalign = 0.5;
+        orientation = GTK_ORIENTATION_HORIZONTAL;
+    }
+    else
+    {
+        xalign = 0.5;
+        yalign = 0.0;
+        orientation = GTK_ORIENTATION_VERTICAL;
+    }
+
+    long text_max_height = (fm_config->show_full_names) ? 0 : self->mode_settings.text_max_height;
+
+    if (self->renderer_text)
+    {
+        g_object_set((GObject*)self->renderer_text,
+            "xalign", xalign,
+            "yalign", yalign,
+            "wrap-mode", PANGO_WRAP_WORD_CHAR,
+            "alignment", self->mode_settings.text_alignment,
+            "max-height", text_max_height,
+            NULL);
+    }
+
+    if (self->view)
+    {
+        exo_icon_view_set_orientation((ExoIconView*)self->view, orientation);
+        exo_icon_view_set_layout_mode((ExoIconView*)self->view, self->mode_settings.icon_layout_mode);
+    }
+}
+
 static inline void create_icon_view(FmStandardView* fv, GList* sels)
 {
     GList *l;
-    GtkCellRenderer* render;
 
     fv->view = exo_icon_view_new();
 
     if(fv->renderer_pixbuf)
         g_object_unref(fv->renderer_pixbuf);
+
     fv->renderer_pixbuf = g_object_ref_sink(fm_cell_renderer_pixbuf_new());
-    render = (GtkCellRenderer*)fv->renderer_pixbuf;
+    GtkCellRenderer * renderer_pixbuf = (GtkCellRenderer*)fv->renderer_pixbuf;
 
-    g_object_set((GObject*)render, "follow-state", TRUE, NULL );
-    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), render, TRUE);
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render, "pixbuf", FM_FOLDER_MODEL_COL_ICON );
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render, "info", FM_FOLDER_MODEL_COL_INFO );
+    if (fv->renderer_text)
+        g_object_unref(fv->renderer_text);
+    fv->renderer_text = g_object_ref_sink(fm_cell_renderer_text_new());
+    GtkCellRenderer * renderer_text = (GtkCellRenderer*)fv->renderer_text;
 
-    if(fv->mode == FM_FV_COMPACT_VIEW) /* compact view */
-    {
-        fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::small_icon_size", G_CALLBACK(on_small_icon_size_changed), fv);
+    g_object_set((GObject*)renderer_pixbuf, "follow-state", TRUE, NULL);
+    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf, TRUE);
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf,
+        "pixbuf", FM_FOLDER_MODEL_COL_ICON);
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf,
+        "info", FM_FOLDER_MODEL_COL_INFO);
 
-        render = fm_cell_renderer_text_new();
-        g_object_set((GObject*)render,
-                     "xalign", 0.5,
-                     "yalign", 0.5,
-                     NULL );
-        exo_icon_view_set_layout_mode( (ExoIconView*)fv->view, EXO_ICON_VIEW_LAYOUT_COLS );
-        exo_icon_view_set_orientation( (ExoIconView*)fv->view, GTK_ORIENTATION_HORIZONTAL );
-    }
-    else /* big icon view or thumbnail view */
-    {
-        if(fv->show_full_names_handler == 0)
-            fv->show_full_names_handler = g_signal_connect(fm_config, "changed::show_full_names", G_CALLBACK(on_show_full_names_changed), fv);
-
-        render = fm_cell_renderer_text_new();
-        g_object_set((GObject*)render,
-                     "wrap-mode", PANGO_WRAP_WORD_CHAR,
-                     "alignment", PANGO_ALIGN_CENTER,
-                     "xalign", 0.5,
-                     "yalign", 0.0,
-                     NULL);
-
-        if (fv->mode == FM_FV_ICON_VIEW)
-        {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config,
-                "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
-
-        }
-        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
-        {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config,
-                "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
-        }
-    }
-
-    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), render, TRUE);
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
-                                "text", FM_FOLDER_MODEL_COL_NAME );
+    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), renderer_text, TRUE);
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_text,
+                                "text", FM_FOLDER_MODEL_COL_NAME);
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_text,
                                 "foreground-rgba", FM_FOLDER_MODEL_COL_COLOR);
 #else
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_text,
                                 "foreground-gdk", FM_FOLDER_MODEL_COL_COLOR);
 #endif
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
+    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_text,
                                 "foreground-set", FM_FOLDER_MODEL_COL_COLOR_SET);
-//    g_object_set(G_OBJECT(render), "foreground-set", TRUE, NULL);
 
 
-    if(fv->renderer_text)
-        g_object_unref(fv->renderer_text);
-    fv->renderer_text = g_object_ref_sink(render);
-
+    apply_mode_settings(fv);
     update_icon_size(fv);
     on_show_full_names_changed(fm_config, fv);
-
-    exo_icon_view_set_spacing((ExoIconView*)fv->view, 1);
 
     exo_icon_view_set_search_column((ExoIconView*)fv->view, FM_FOLDER_MODEL_COL_NAME);
     g_signal_connect(fv->view, "item-activated", G_CALLBACK(on_icon_view_item_activated), fv);
@@ -1149,46 +1172,120 @@ void fm_folder_view_set_mode(FmFolderView* fv, guint mode)
  */
 void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
 {
-    if( mode != fv->mode )
+    if( mode == fv->mode)
+        return;
+
+    GList *sels;
+    gboolean has_focus;
+
+    if (fv->view)
     {
-        GList *sels;
-        gboolean has_focus;
+        has_focus = gtk_widget_has_focus(fv->view);
+        /* preserve old selections */
+        sels = fm_standard_view_get_selected_tree_paths(fv);
 
-        if( G_LIKELY(fv->view) )
+        unset_view(fv); /* it will destroy the fv->view widget */
+    }
+    else
+    {
+        sels = NULL;
+        has_focus = FALSE;
+    }
+
+    if (fv->icon_size_changed_handler)
+    {
+        g_signal_handler_disconnect(fm_config, fv->icon_size_changed_handler);
+        fv->icon_size_changed_handler = 0;
+    }
+
+    if(fv->show_full_names_handler)
+    {
+        g_signal_handler_disconnect(fm_config, fv->show_full_names_handler);
+        fv->show_full_names_handler = 0;
+    }
+
+
+    mode_settings[FM_FV_ICON_VIEW].type = FmViewType_Icon;
+    mode_settings[FM_FV_ICON_VIEW].horizontal_orientation = FALSE;
+    mode_settings[FM_FV_ICON_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS;
+    mode_settings[FM_FV_ICON_VIEW].text_alignment = PANGO_ALIGN_CENTER;
+    mode_settings[FM_FV_ICON_VIEW].text_max_height = -2;
+    mode_settings[FM_FV_ICON_VIEW].item_width_min = 64;
+    mode_settings[FM_FV_ICON_VIEW].item_width_mult = 1.5;
+    mode_settings[FM_FV_ICON_VIEW].row_spacing_min = 5;
+    mode_settings[FM_FV_ICON_VIEW].row_spacing_mult = 0.1;
+    mode_settings[FM_FV_ICON_VIEW].col_spacing_min = 5;
+    mode_settings[FM_FV_ICON_VIEW].col_spacing_mult = 0.1;
+    mode_settings[FM_FV_ICON_VIEW].padding_min = 2;
+    mode_settings[FM_FV_ICON_VIEW].padding_mult = 0.06;
+    mode_settings[FM_FV_ICON_VIEW].cell_spacing = 1;
+
+    mode_settings[FM_FV_THUMBNAIL_VIEW].type = FmViewType_Icon;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].horizontal_orientation = FALSE;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].text_alignment = PANGO_ALIGN_CENTER;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].text_max_height = -1;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].item_width_min = 96;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].item_width_mult = 1;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].row_spacing_min = 5;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].row_spacing_mult = 0.1;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].col_spacing_min = 5;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].col_spacing_mult = 0.1;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].padding_min = 2;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].padding_mult = 0.06;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].cell_spacing = 1;
+
+    mode_settings[FM_FV_COMPACT_VIEW].type = FmViewType_Icon;
+    mode_settings[FM_FV_COMPACT_VIEW].horizontal_orientation = TRUE;
+    mode_settings[FM_FV_COMPACT_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_COLS;
+    mode_settings[FM_FV_COMPACT_VIEW].text_alignment = PANGO_ALIGN_LEFT;
+    mode_settings[FM_FV_COMPACT_VIEW].item_width_min = 0;
+    mode_settings[FM_FV_COMPACT_VIEW].item_width_mult = 0;
+    mode_settings[FM_FV_COMPACT_VIEW].row_spacing_min = 1;
+    mode_settings[FM_FV_COMPACT_VIEW].row_spacing_mult = 0.1;
+    mode_settings[FM_FV_COMPACT_VIEW].col_spacing_min = 1;
+    mode_settings[FM_FV_COMPACT_VIEW].col_spacing_mult = 0.1;
+    mode_settings[FM_FV_COMPACT_VIEW].padding_min = 0;
+    mode_settings[FM_FV_COMPACT_VIEW].padding_mult = 0.06;
+    mode_settings[FM_FV_COMPACT_VIEW].cell_spacing = 1;
+
+    mode_settings[FM_FV_LIST_VIEW].type = FmViewType_Tree;
+
+
+    fv->mode = mode;
+
+    fv->mode_settings = mode_settings[mode];
+
+
+    if(fv->mode == FM_FV_COMPACT_VIEW)
+    {
+        fv->icon_size_changed_handler = g_signal_connect(fm_config,
+            "changed::small_icon_size", G_CALLBACK(on_small_icon_size_changed), fv);
+    }
+    else
+    {
+        if (fv->show_full_names_handler == 0)
+            fv->show_full_names_handler = g_signal_connect(fm_config,
+                "changed::show_full_names", G_CALLBACK(on_show_full_names_changed), fv);
+
+        if (fv->mode == FM_FV_ICON_VIEW)
         {
-            has_focus = gtk_widget_has_focus(fv->view);
-            /* preserve old selections */
-            sels = fm_standard_view_get_selected_tree_paths(fv);
-
-            unset_view(fv); /* it will destroy the fv->view widget */
-
-            /* FIXME: compact view and icon view actually use the same
-             * type of widget, ExoIconView. So it may be better to
-             * reuse the widget when available. */
+            fv->icon_size_changed_handler = g_signal_connect(fm_config,
+                "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
         }
-        else
+        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
         {
-            sels = NULL;
-            has_focus = FALSE;
+            fv->icon_size_changed_handler = g_signal_connect(fm_config,
+                "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
         }
+    }
 
-        if(fv->icon_size_changed_handler)
-        {
-            g_signal_handler_disconnect(fm_config, fv->icon_size_changed_handler);
-            fv->icon_size_changed_handler = 0;
-        }
-        if(fv->show_full_names_handler)
-        {
-            g_signal_handler_disconnect(fm_config, fv->show_full_names_handler);
-            fv->show_full_names_handler = 0;
-        }
 
-        fv->mode = mode;
-        switch(mode)
+
+    switch(fv->mode_settings.type)
+    {
+        case FmViewType_Icon:
         {
-        case FM_FV_COMPACT_VIEW:
-        case FM_FV_ICON_VIEW:
-        case FM_FV_THUMBNAIL_VIEW:
             create_icon_view(fv, sels);
             fv->set_single_click = (void(*)(GtkWidget*,gboolean))exo_icon_view_set_single_click;
             fv->get_drop_path = get_drop_path_icon_view;
@@ -1197,7 +1294,9 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
             fv->select_invert = select_invert_icon_view;
             fv->select_path = select_path_icon_view;
             break;
-        case FM_FV_LIST_VIEW: /* detailed list view */
+        }
+        case FmViewType_Tree:
+        {
             create_list_view(fv, sels);
             fv->set_single_click = (void(*)(GtkWidget*,gboolean))exo_tree_view_set_single_click;
             fv->get_drop_path = get_drop_path_list_view;
@@ -1206,33 +1305,31 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
             fv->select_invert = select_invert_list_view;
             fv->select_path = select_path_list_view;
         }
-
-        if (fv->model)
-            fm_folder_model_set_pattern(fv->model, fv->pattern);
-
-        g_list_foreach(sels, (GFunc)gtk_tree_path_free, NULL);
-        g_list_free(sels);
-
-        fm_dnd_src_set_widget(fv->dnd_src, fv->view);
-        fm_dnd_dest_set_widget(fv->dnd_dest, fv->view);
-        g_signal_connect_after(fv->view, "drag-motion", G_CALLBACK(on_drag_motion), fv);
-        /* connecting it after sometimes conflicts with system configuration
-           (bug #3559831) so we just hope here it will be handled in order
-           of connecting, i.e. after ExoIconView or ExoTreeView handler */
-        g_signal_connect(fv->view, "button-press-event", G_CALLBACK(on_btn_pressed), fv);
-
-        fm_dnd_set_dest_auto_scroll(fv->view, gtk_scrolled_window_get_hadjustment((GtkScrolledWindow*)fv), gtk_scrolled_window_get_vadjustment((GtkScrolledWindow*)fv));
-
-        gtk_widget_show(fv->view);
-        gtk_container_add(GTK_CONTAINER(fv), fv->view);
-
-        if(has_focus) /* restore the focus if needed. */
-            gtk_widget_grab_focus(fv->view);
     }
-    else
-    {
-        /* g_debug("same mode"); */
-    }
+
+    if (fv->model)
+        fm_folder_model_set_pattern(fv->model, fv->pattern);
+
+    g_list_foreach(sels, (GFunc)gtk_tree_path_free, NULL);
+    g_list_free(sels);
+
+    fm_dnd_src_set_widget(fv->dnd_src, fv->view);
+    fm_dnd_dest_set_widget(fv->dnd_dest, fv->view);
+    g_signal_connect_after(fv->view, "drag-motion", G_CALLBACK(on_drag_motion), fv);
+    /* connecting it after sometimes conflicts with system configuration
+       (bug #3559831) so we just hope here it will be handled in order
+        of connecting, i.e. after ExoIconView or ExoTreeView handler */
+    g_signal_connect(fv->view, "button-press-event", G_CALLBACK(on_btn_pressed), fv);
+
+    fm_dnd_set_dest_auto_scroll(fv->view,
+        gtk_scrolled_window_get_hadjustment((GtkScrolledWindow*)fv),
+        gtk_scrolled_window_get_vadjustment((GtkScrolledWindow*)fv));
+
+    gtk_widget_show(fv->view);
+    gtk_container_add(GTK_CONTAINER(fv), fv->view);
+
+    if (has_focus) /* restore the focus if needed. */
+        gtk_widget_grab_focus(fv->view);
 }
 
 /**

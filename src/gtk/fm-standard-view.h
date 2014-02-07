@@ -50,7 +50,8 @@ typedef enum
     FM_FV_ICON_VIEW,
     FM_FV_COMPACT_VIEW,
     FM_FV_THUMBNAIL_VIEW,
-    FM_FV_LIST_VIEW
+    FM_FV_LIST_VIEW,
+    FM_FV_VIEW_MODE_COUNT
 } FmStandardViewMode;
 
 #ifndef FM_DISABLE_DEPRECATED
