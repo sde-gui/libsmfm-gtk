@@ -411,12 +411,12 @@ static void fm_cell_renderer_text_get_size(GtkCellRenderer            *cell,
     if (rectangle)
     {
         GdkRectangle available_room = *rectangle;
-        if (available_room.width - xpad * 2 > 0)
+        if (available_room.width > xpad * 2)
             available_room.width -= xpad * 2;
         else
             available_room.width = 0;
 
-        if (available_room.height - ypad * 2 > 0)
+        if (available_room.height > ypad * 2)
             available_room.height -= ypad * 2;
         else
             available_room.height = 0;

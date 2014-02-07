@@ -415,7 +415,7 @@ static void set_icon_size(FmStandardView* fv, guint icon_size)
         {
             row_spacing = MIN(1, icon_size * 0.1);
             col_spacing = MIN(1, icon_size * 0.1);
-            padding = MIN(1, icon_size * 0.1);
+            padding = MIN(0, icon_size * 0.1);
         }
 
         exo_icon_view_set_row_spacing(EXO_ICON_VIEW(fv->view), row_spacing);
@@ -628,8 +628,9 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
     fv->renderer_text = g_object_ref_sink(render);
 
     update_icon_size(fv);
-
     on_show_full_names_changed(fm_config, fv);
+
+    exo_icon_view_set_spacing((ExoIconView*)fv->view, 1);
 
     exo_icon_view_set_search_column((ExoIconView*)fv->view, FM_FOLDER_MODEL_COL_NAME);
     g_signal_connect(fv->view, "item-activated", G_CALLBACK(on_icon_view_item_activated), fv);
