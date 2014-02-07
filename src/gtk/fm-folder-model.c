@@ -477,12 +477,14 @@ static void _fm_folder_model_add_file(FmFolderModel* model, FmFileInfo* file)
 static void _fm_folder_model_files_added(FmFolder* dir, GSList* files,
                                          FmFolderModel* model)
 {
+printf("==> %d\n", g_slist_length(files));
     GSList* l;
     for( l = files; l; l=l->next )
     {
         FmFileInfo* fi = FM_FILE_INFO(l->data);
         _fm_folder_model_add_file(model, fi);
     }
+printf("----\n");
 }
 
 

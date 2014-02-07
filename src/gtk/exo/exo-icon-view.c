@@ -657,6 +657,14 @@ struct _ExoIconViewPrivate
 };
 
 
+#define FOR_EACH_VIEW_ITEM(item, items, code) \
+GList * iterator_##item; \
+for (iterator_##item = (items); iterator_##item; iterator_##item = iterator_##item->next) \
+{ \
+    ExoIconViewItem * item = (ExoIconViewItem *) iterator_##item->data; \
+    code \
+}
+
 static GdkRectangle item_get_bounding_box(const ExoIconViewItem * item)
 {
     if (item)
@@ -1894,11 +1902,8 @@ exo_icon_view_expose_event (GtkWidget      *widget,
   ExoIconViewDropPosition dest_pos;
   ExoIconViewPrivate     *priv = EXO_ICON_VIEW (widget)->priv;
   ExoIconViewItem        *dest_item = NULL;
-  ExoIconViewItem        *item;
   ExoIconView            *icon_view = EXO_ICON_VIEW (widget);
   GtkTreePath            *path;
-  GdkRectangle            rubber_rect = { 0, };
-  const GList            *lp;
   gint                    dest_index = -1;
 #if !GTK_CHECK_VERSION(3, 0, 0)
   gint                    event_area_last;
@@ -1958,11 +1963,9 @@ exo_icon_view_expose_event (GtkWidget      *widget,
 #endif
 
   /* paint all items that are affected by the expose event */
-  for (lp = priv->items; lp != NULL; lp = lp->next)
-    {
+  FOR_EACH_VIEW_ITEM(item, priv->items,
+  {
       /* check if this item is in the visible area */
-      item = EXO_ICON_VIEW_ITEM (lp->data);
-
       GdkRectangle item_area = item_get_bounding_box(item);
 #if !GTK_CHECK_VERSION(3, 0, 0)
       if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
@@ -1999,7 +2002,7 @@ exo_icon_view_expose_event (GtkWidget      *widget,
 #if GTK_CHECK_VERSION(3, 0, 0)
       cairo_restore (cr);
 #endif
-    }
+   })
 
   /* draw the drag indicator */
   if (G_UNLIKELY (dest_item != NULL))
@@ -2949,17 +2952,15 @@ exo_icon_view_start_rubberbanding (ExoIconView  *icon_view,
   GdkColor       *color;
   guchar          alpha;
   gpointer        drag_data;
-  GList          *items;
   GtkStyle       *style;
 
   /* be sure to disable any previously active rubberband */
   exo_icon_view_stop_rubberbanding (icon_view);
 
-  for (items = icon_view->priv->items; items; items = items->next)
-    {
-      ExoIconViewItem *item = items->data;
+  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+  {
       item->selected_before_rubberbanding = item->selected;
-    }
+  })
 
   icon_view->priv->rubberband_x_1 = x;
   icon_view->priv->rubberband_y_1 = y;
@@ -3011,11 +3012,9 @@ exo_icon_view_stop_rubberbanding (ExoIconView *icon_view)
 static void
 exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
 {
-  ExoIconViewItem *item;
   gboolean         selected;
   gboolean         changed = FALSE;
   gboolean         is_in;
-  GList           *lp;
   gint             x, y;
   gint             width;
   gint             height;
@@ -3026,12 +3025,11 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
   width = ABS (icon_view->priv->rubberband_x_1 - icon_view->priv->rubberband_x2);
   height = ABS (icon_view->priv->rubberband_y_1 - icon_view->priv->rubberband_y2);
 
-  /* check all items */
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
-    {
-      item = EXO_ICON_VIEW_ITEM (lp->data);
+  GdkRectangle test_box = {x, y, width, height};
 
-      GdkRectangle test_box = {x, y, width, height};
+  /* check all items */
+  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+  {
       is_in = exo_icon_view_item_hit_test (icon_view, item, &test_box, NULL);
 
       selected = is_in ^ item->selected_before_rubberbanding;
@@ -3042,7 +3040,7 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
           item->selected = selected;
           exo_icon_view_queue_draw_item (icon_view, item);
         }
-    }
+  })
 
   if (G_LIKELY (changed))
     g_signal_emit (G_OBJECT (icon_view), icon_view_signals[SELECTION_CHANGED], 0);
@@ -3116,13 +3114,11 @@ exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
 
     update_indeces(icon_view);
 
-    const GList * items;
-    for (items = priv->items; items != NULL; items = items->next)
+    FOR_EACH_VIEW_ITEM(item, priv->items,
     {
-        ExoIconViewItem * item = items->data;
         if (exo_icon_view_item_hit_test(icon_view, item, &test_box, cell_at_pos))
             return item;
-    }
+    })
 
     return NULL;
 }
@@ -3138,8 +3134,8 @@ exo_icon_view_unselect_all_internal (ExoIconView  *icon_view)
 
   if (G_LIKELY (icon_view->priv->selection_mode != GTK_SELECTION_NONE))
     {
-      for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
-        {
+      FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+      {
           item = EXO_ICON_VIEW_ITEM (lp->data);
           if (item->selected)
             {
@@ -3148,7 +3144,7 @@ exo_icon_view_unselect_all_internal (ExoIconView  *icon_view)
               exo_icon_view_queue_draw_item (icon_view, item);
               exo_icon_view_item_selected_changed (icon_view, item);
             }
-        }
+      })
     }
 
   return dirty;
@@ -3744,13 +3740,11 @@ exo_icon_view_layout (ExoIconView *icon_view)
         long item_width = priv->item_width;
         if (item_width < 0)
         {
-            GList *icons;
-            for (icons = priv->items; icons != NULL; icons = icons->next)
+            FOR_EACH_VIEW_ITEM(item, priv->items,
             {
-                ExoIconViewItem * item = icons->data;
                 exo_icon_view_calculate_item_size (icon_view, item);
                 item_width = MAX (item_width, item->bounding_box.width);
-            }
+            })
         }
 
         long maximum_width = 0;
@@ -3775,13 +3769,11 @@ exo_icon_view_layout (ExoIconView *icon_view)
     {
         long item_height = 0;
         /* calculate item sizes on-demand */
-        GList *icons;
-        for (icons = priv->items, item_height = 0; icons != NULL; icons = icons->next)
+        FOR_EACH_VIEW_ITEM(item, priv->items,
         {
-            ExoIconViewItem * item = icons->data;
             exo_icon_view_calculate_item_size (icon_view, item);
             item_height = MAX (item_height, item->bounding_box.height);
-        }
+        })
 
         long maximum_height = 0;
         long x = 0;
@@ -4052,13 +4044,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
 static void
 exo_icon_view_invalidate_sizes (ExoIconView *icon_view)
 {
-  GList *lp;
-
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
+  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
   {
-    EXO_ICON_VIEW_ITEM (lp->data)->layout_done = FALSE;
-    EXO_ICON_VIEW_ITEM (lp->data)->rough_layout_done = FALSE;
-  }
+    item->layout_done = FALSE;
+    item->rough_layout_done = FALSE;
+  })
   exo_icon_view_queue_layout (icon_view);
 }
 
@@ -4339,18 +4329,14 @@ exo_icon_view_unselect_item (ExoIconView      *icon_view,
 
 static void verify_items(const ExoIconView * icon_view)
 {
-    GList * items;
     int i = 0;
-
-    for (items = icon_view->priv->items; items; items = items->next)
+    FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
     {
-        ExoIconViewItem *item = items->data;
-
         if (item->index != i)
           g_error ("List item does not match its index: "
                    "item index %d and list index %d\n", item->index, i);
         i++;
-    }
+    })
 }
 
 static void update_indeces(const ExoIconView * icon_view)
