@@ -472,6 +472,8 @@ static void     exo_icon_view_search_timeout_destroy    (gpointer        user_da
 
 static void update_indeces(const ExoIconView * icon_view);
 
+static void exo_icon_view_queue_draw(ExoIconView * icon_view);
+static void exo_icon_view_force_draw(ExoIconView * icon_view);
 
 struct _ExoIconViewCellInfo
 {
@@ -537,6 +539,8 @@ struct _ExoIconViewPrivate
   guint hscroll_policy : 1;
   guint vscroll_policy : 1;
 #endif
+
+  guint delayed_expose_timeout_id;
 
   gint layout_idle_id;
   long rough_item_width;
@@ -1363,11 +1367,14 @@ exo_icon_view_finalize (GObject *object)
   exo_icon_view_cell_layout_clear (GTK_CELL_LAYOUT (icon_view));
 
   /* be sure to cancel the single click timeout */
-  if (G_UNLIKELY (icon_view->priv->single_click_timeout_id != 0))
+  if (icon_view->priv->single_click_timeout_id != 0)
     g_source_remove (icon_view->priv->single_click_timeout_id);
 
+  if (icon_view->priv->delayed_expose_timeout_id != 0)
+    g_source_remove (icon_view->priv->delayed_expose_timeout_id);
+
   /* kill the layout idle source (it's important to have this last!) */
-  if (G_UNLIKELY (icon_view->priv->layout_idle_id != 0))
+  if (icon_view->priv->layout_idle_id != 0)
     g_source_remove (icon_view->priv->layout_idle_id);
 
   (*G_OBJECT_CLASS (exo_icon_view_parent_class)->finalize) (object);
@@ -1889,6 +1896,41 @@ exo_icon_view_paint_rubberband(ExoIconView * icon_view, cairo_t * cr)
   gdk_color_free (fill_color_gdk);
 }
 
+static gboolean delayed_expose_callback(gpointer user_data)
+{
+    return FALSE;
+}
+
+static void delayed_expose_destroy_callback(gpointer user_data)
+{
+    ExoIconView * icon_view = (ExoIconView *) user_data;
+    icon_view->priv->delayed_expose_timeout_id = 0;
+    gtk_widget_queue_draw(GTK_WIDGET(icon_view));
+}
+
+static void exo_icon_view_delayed_expose(ExoIconView * icon_view)
+{
+    ExoIconViewPrivate * priv = icon_view->priv;
+
+    if (priv->delayed_expose_timeout_id == 0)
+        icon_view->priv->delayed_expose_timeout_id =
+            g_timeout_add_full(G_PRIORITY_DEFAULT, 300, delayed_expose_callback, icon_view, delayed_expose_destroy_callback);
+}
+
+static void exo_icon_view_queue_draw(ExoIconView * icon_view)
+{
+    if (!icon_view->priv->delayed_expose_timeout_id)
+        gtk_widget_queue_draw(GTK_WIDGET(icon_view));
+}
+
+static void exo_icon_view_force_draw(ExoIconView * icon_view)
+{
+    if (icon_view->priv->delayed_expose_timeout_id)
+        g_source_remove(icon_view->priv->delayed_expose_timeout_id);
+    else
+        gtk_widget_queue_draw(GTK_WIDGET(icon_view));
+}
+
 
 static gboolean
 #if GTK_CHECK_VERSION(3, 0, 0)
@@ -1909,6 +1951,11 @@ exo_icon_view_expose_event (GtkWidget      *widget,
   gint                    event_area_last;
   GdkRectangle            event_area;
   cairo_t                *cr;
+
+  if (priv->delayed_expose_timeout_id)
+  {
+    return TRUE;
+  }
 
   /* verify that the expose happened on the icon window */
   if (G_UNLIKELY (event->window != priv->bin_window))
@@ -2832,7 +2879,7 @@ exo_icon_view_focus_out_event (GtkWidget     *widget,
     exo_icon_view_search_dialog_hide (icon_view->priv->search_window, icon_view);
 
   /* schedule a redraw with the new focus state */
-  gtk_widget_queue_draw (widget);
+  exo_icon_view_queue_draw (icon_view);
 
   return FALSE;
 }
@@ -2993,7 +3040,7 @@ exo_icon_view_stop_rubberbanding (ExoIconView *icon_view)
     {
       icon_view->priv->doing_rubberband = FALSE;
       gtk_grab_remove (GTK_WIDGET (icon_view));
-      gtk_widget_queue_draw (GTK_WIDGET (icon_view));
+      exo_icon_view_queue_draw(icon_view);
 
       /* re-enable Gtk+ DnD callbacks again */
       drag_data = g_object_get_data (G_OBJECT (icon_view), I_("gtk-site-data"));
@@ -3128,15 +3175,12 @@ exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
 static gboolean
 exo_icon_view_unselect_all_internal (ExoIconView  *icon_view)
 {
-  ExoIconViewItem *item;
   gboolean         dirty = FALSE;
-  GList           *lp;
 
   if (G_LIKELY (icon_view->priv->selection_mode != GTK_SELECTION_NONE))
     {
       FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
       {
-          item = EXO_ICON_VIEW_ITEM (lp->data);
           if (item->selected)
             {
               dirty = TRUE;
@@ -3804,7 +3848,8 @@ exo_icon_view_layout (ExoIconView *icon_view)
                            MAX (priv->height, allocation.height));
     }
 
-    gtk_widget_queue_draw (GTK_WIDGET (icon_view));
+    exo_icon_view_force_draw(icon_view);
+
 /*
     printf("    fairly_layouted_items_at_this_step = %ld\n", priv->fairly_layouted_items_at_this_step);
     printf("    items_seen = %ld\n", priv->items_seen);
@@ -4186,6 +4231,9 @@ static void
 exo_icon_view_queue_draw_item (ExoIconView     *icon_view,
                                ExoIconViewItem *item)
 {
+  if (icon_view->priv->delayed_expose_timeout_id)
+    return;
+
   GdkRectangle rect;
   gint         focus_width = icon_view->priv->style_focus_line_width;
 
@@ -5834,6 +5882,11 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
         g_return_if_fail (gtk_tree_model_get_column_type (model, icon_view->priv->markup_column) == G_TYPE_STRING);
     }
 
+  if (gtk_widget_get_realized (GTK_WIDGET (icon_view)))
+  {
+    exo_icon_view_delayed_expose(icon_view);
+  }
+
   /* be sure to cancel any pending editor */
   exo_icon_view_stop_editing (icon_view, TRUE);
 
@@ -5872,8 +5925,10 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
         g_source_remove (icon_view->priv->single_click_timeout_id);
 
       /* reset cursor when in single click mode and realized */
-      if (G_UNLIKELY (icon_view->priv->single_click && gtk_widget_get_realized (GTK_WIDGET(icon_view))))        gdk_window_set_cursor (icon_view->priv->bin_window, NULL);
+      if (icon_view->priv->single_click && gtk_widget_get_realized (GTK_WIDGET(icon_view)))
+        gdk_window_set_cursor (icon_view->priv->bin_window, NULL);
     }
+
 
   /* be sure to drop any previous scroll_to_path reference,
    * as it points to the old (no longer valid) model.
@@ -5886,6 +5941,7 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
 
   /* activate the new model */
   icon_view->priv->model = model;
+
 
   /* connect to the new model */
   if (G_LIKELY (model != NULL))
@@ -5947,8 +6003,6 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
   /* notify listeners */
   g_object_notify (G_OBJECT (icon_view), "model");
 
-  if (gtk_widget_get_realized (GTK_WIDGET (icon_view)))
-    gtk_widget_queue_resize (GTK_WIDGET (icon_view));
 }
 
 
