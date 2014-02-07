@@ -264,7 +264,7 @@ static gint                 exo_icon_view_layout_rows                    (ExoIco
                                                                           long                   *y,
                                                                           long                   *maximum_width,
                                                                           long                    max_cols);
-static void                 exo_icon_view_layout                         (ExoIconView            *icon_view);
+static gboolean             exo_icon_view_layout                         (ExoIconView            *icon_view);
 static void                 exo_icon_view_paint_item                     (ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *item,
                                                                           GdkRectangle           *area,
@@ -498,13 +498,7 @@ struct _ExoIconViewItem
 {
   GtkTreeIter iter;
 
-  /* Bounding box (a value of -1 for width indicates
-   * that the item needs to be layouted first)
-   */
-  GdkRectangle area;
-
-  /* Layout of Individual cells.
-   */
+  GdkRectangle bounding_box;
   gint n_cells;
   GdkRectangle *cell_boxes;
   GdkRectangle *cell_areas;
@@ -514,6 +508,8 @@ struct _ExoIconViewItem
   guint col : ((sizeof (guint) / 2) * 8) - 1;
   guint selected : 1;
   guint selected_before_rubberbanding : 1;
+  guint layout_done;
+  guint rough_layout_done;
 };
 
 struct _ExoIconViewPrivate
@@ -543,6 +539,13 @@ struct _ExoIconViewPrivate
 #endif
 
   gint layout_idle_id;
+  long rough_item_width;
+  long rough_item_height;
+  long fairly_layouted_items_at_this_step;
+  long max_fairly_layouted_items_at_one_step;
+  long items_seen;
+  long rought_items_left;
+  long layout_prio;
 
   gboolean doing_rubberband;
   gint rubberband_x_1, rubberband_y_1;
@@ -653,6 +656,14 @@ struct _ExoIconViewPrivate
   gint style_focus_padding;
 };
 
+
+static GdkRectangle item_get_bounding_box(const ExoIconViewItem * item)
+{
+    if (item)
+        return item->bounding_box;
+    GdkRectangle r = {0, 0, 0, 0};
+    return r;
+}
 
 
 static guint icon_view_signals[LAST_SIGNAL];
@@ -1727,10 +1738,11 @@ exo_icon_view_allocate_children (ExoIconView *icon_view)
       /* totally ignore our child's requisition */
       if (child->cell < 0)
       {
-        allocation.x = child->item->area.x + icon_view->priv->item_padding;
-        allocation.y = child->item->area.y + icon_view->priv->item_padding;
-        allocation.width = child->item->area.width - icon_view->priv->item_padding * 2;
-        allocation.height = child->item->area.height - icon_view->priv->item_padding * 2;
+        GdkRectangle area = item_get_bounding_box(child->item);
+        allocation.x = area.x + icon_view->priv->item_padding;
+        allocation.y = area.y + icon_view->priv->item_padding;
+        allocation.width = area.width - icon_view->priv->item_padding * 2;
+        allocation.height = area.height - icon_view->priv->item_padding * 2;
       }
       else
         allocation = child->item->cell_boxes[child->cell];
@@ -1901,12 +1913,6 @@ exo_icon_view_expose_event (GtkWidget      *widget,
     return FALSE;
 #endif
 
-  /* don't handle expose if the layout isn't done yet; the layout
-   * method will schedule a redraw when done.
-   */
-  if (G_UNLIKELY (priv->layout_idle_id != 0))
-    return FALSE;
-
   update_indeces(icon_view);
 
   /* scroll to the previously remembered path (if any) */
@@ -1956,34 +1962,36 @@ exo_icon_view_expose_event (GtkWidget      *widget,
     {
       /* check if this item is in the visible area */
       item = EXO_ICON_VIEW_ITEM (lp->data);
+
+      GdkRectangle item_area = item_get_bounding_box(item);
 #if !GTK_CHECK_VERSION(3, 0, 0)
       if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
         {
-          if (item->area.y > event_area_last)
+          if (item_area.y > event_area_last)
             break;
-          else if (item->area.y + item->area.height < event_area.y)
+          else if (item_area.y + item_area.height < event_area.y)
             continue;
         }
       else
         {
-          if (item->area.x > event_area_last)
+          if (item_area.x > event_area_last)
             break;
-          else if (item->area.x + item->area.width < event_area.x)
+          else if (item_area.x + item_area.width < event_area.x)
             continue;
         }
 
       /* check if this item needs an update */
-      if (G_LIKELY (gdk_region_rect_in (event->region, &item->area) != GDK_OVERLAP_RECTANGLE_OUT))
+      if (G_LIKELY (gdk_region_rect_in (event->region, &item_area) != GDK_OVERLAP_RECTANGLE_OUT))
         {
-          exo_icon_view_paint_item (icon_view, item, &event_area, event->window, item->area.x, item->area.y, TRUE);
+          exo_icon_view_paint_item (icon_view, item, &event_area, event->window, item_area.x, item_area.y, TRUE);
 #else
       cairo_save (cr);
-      cairo_rectangle (cr, item->area.x, item->area.y, item->area.width, item->area.height);
+      cairo_rectangle (cr, item_area.x, item_area.y, item_area.width, item_area.height);
       cairo_clip (cr);
 
       if (gdk_cairo_get_clip_rectangle (cr, NULL))
         {
-          exo_icon_view_paint_item (icon_view, item, &item->area, cr, item->area.x, item->area.y, TRUE);
+          exo_icon_view_paint_item (icon_view, item, &item_area, cr, item_area.x, item_area.y, TRUE);
 #endif
           if (G_UNLIKELY (dest_index == item->index))
             dest_item = item;
@@ -2002,35 +2010,36 @@ exo_icon_view_expose_event (GtkWidget      *widget,
       GtkStyle *style = gtk_widget_get_style (widget);
 #endif
       GdkRectangle rect = { 0 };
+      GdkRectangle dest_item_area = item_get_bounding_box(dest_item);
 
       switch (dest_pos)
         {
         case EXO_ICON_VIEW_DROP_INTO:
-          rect = dest_item->area;
+          rect = dest_item_area;
           break;
         case GTK_ICON_VIEW_DROP_ABOVE:
-          rect.x = dest_item->area.x;
-          rect.y = dest_item->area.y - 1;
-          rect.width = dest_item->area.width;
+          rect.x = dest_item_area.x;
+          rect.y = dest_item_area.y - 1;
+          rect.width = dest_item_area.width;
           rect.height = 2;
           break;
         case GTK_ICON_VIEW_DROP_LEFT:
-          rect.x = dest_item->area.x - 1;
-          rect.y = dest_item->area.y;
+          rect.x = dest_item_area.x - 1;
+          rect.y = dest_item_area.y;
           rect.width = 2;
-          rect.height = dest_item->area.height;
+          rect.height = dest_item_area.height;
           break;
         case GTK_ICON_VIEW_DROP_BELOW:
-          rect.x = dest_item->area.x;
-          rect.y = dest_item->area.y + dest_item->area.height - 1;
-          rect.width = dest_item->area.width;
+          rect.x = dest_item_area.x;
+          rect.y = dest_item_area.y + dest_item_area.height - 1;
+          rect.width = dest_item_area.width;
           rect.height = 2;
           break;
         case GTK_ICON_VIEW_DROP_RIGHT:
-          rect.x = dest_item->area.x + dest_item->area.width - 1;
-          rect.y = dest_item->area.y;
+          rect.x = dest_item_area.x + dest_item_area.width - 1;
+          rect.y = dest_item_area.y;
           rect.width = 2;
-          rect.height = dest_item->area.height;
+          rect.height = dest_item_area.height;
         case EXO_ICON_VIEW_NO_DROP:
           break;
 
@@ -2117,6 +2126,8 @@ exo_icon_view_motion_notify_event (GtkWidget      *widget,
   gint             size;
   gint             abso;
   GtkAllocation    allocation;
+
+  icon_view->priv->layout_prio = 0;
 
   exo_icon_view_maybe_begin_drag (icon_view, event);
   gtk_widget_get_allocation (widget, &allocation);
@@ -2483,6 +2494,8 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
   if (event->window != icon_view->priv->bin_window)
     return FALSE;
 
+  icon_view->priv->layout_prio = 0;
+
   /* stop any pending "single-click-timeout" */
   if (G_UNLIKELY (icon_view->priv->single_click_timeout_id != 0))
     g_source_remove (icon_view->priv->single_click_timeout_id);
@@ -2638,6 +2651,8 @@ exo_icon_view_button_release_event (GtkWidget      *widget,
 
   update_indeces(icon_view);
 
+  icon_view->priv->layout_prio = 0;
+
   if (icon_view->priv->pressed_button == (gint) event->button)
     {
       /* check if we're in single click mode */
@@ -2679,6 +2694,8 @@ exo_icon_view_scroll_event (GtkWidget      *widget,
   gdouble        delta;
   gdouble        value;
 
+  icon_view->priv->layout_prio = 0;
+
   /* we don't care for scroll events in "rows" layout mode, as
    * that's completely handled by GtkScrolledWindow.
    */
@@ -2718,6 +2735,8 @@ exo_icon_view_key_press_event (GtkWidget   *widget,
   gulong       popup_menu_id;
   gchar       *new_text;
   gchar       *old_text;
+
+  icon_view->priv->layout_prio = 0;
 
   /* let the parent class handle the key bindings and stuff */
   if ((*GTK_WIDGET_CLASS (exo_icon_view_parent_class)->key_press_event) (widget, event))
@@ -3048,7 +3067,8 @@ exo_icon_view_item_hit_test (const ExoIconView          *icon_view,
 {
     gboolean only_in_cell = !fm_config->exo_icon_draw_rectangle_around_selected_item;
 
-    if (!rectangle_hit_test(test_box, &item->area))
+    GdkRectangle item_area = item_get_bounding_box(item);
+    if (!rectangle_hit_test(test_box, &item_area))
         return FALSE;
 
     if (cell_at_pos)
@@ -3436,12 +3456,12 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
     {
       item = EXO_ICON_VIEW_ITEM (items->data);
 
-      exo_icon_view_calculate_item_size (icon_view, item);
-      colspan = 1 + (item->area.width - 1) / (item_width + priv->column_spacing);
+      //exo_icon_view_calculate_item_size (icon_view, item);
+      colspan = 1 + (item->bounding_box.width - 1) / (item_width + priv->column_spacing);
 
-      item->area.width = colspan * item_width + (colspan - 1) * priv->column_spacing;
+      item->bounding_box.width = colspan * item_width + (colspan - 1) * priv->column_spacing;
 
-      current_width += item->area.width + priv->column_spacing + 2 * focus_width;
+      current_width += item->bounding_box.width + priv->column_spacing + 2 * focus_width;
 
       if (G_LIKELY (items != first_item))
         {
@@ -3451,8 +3471,8 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
             break;
         }
 
-      item->area.y = *y + focus_width;
-      item->area.x = rtl ? allocation.width - item->area.width - x : x;
+      item->bounding_box.y = *y + focus_width;
+      item->bounding_box.x = rtl ? allocation.width - item->bounding_box.width - x : x;
 
       x = current_width - (priv->margin + focus_width);
 
@@ -3481,8 +3501,8 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
       exo_icon_view_calculate_item_size2 (icon_view, item, max_width, max_height);
 
       /* We may want to readjust the new y coordinate. */
-      if (item->area.y + item->area.height + focus_width + priv->row_spacing > *y)
-        *y = item->area.y + item->area.height + focus_width + priv->row_spacing;
+      if (item->bounding_box.y + item->bounding_box.height + focus_width + priv->row_spacing > *y)
+        *y = item->bounding_box.y + item->bounding_box.height + focus_width + priv->row_spacing;
 
       if (G_UNLIKELY (rtl))
         item->col = col - 1 - item->col;
@@ -3533,13 +3553,13 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
     {
       item = EXO_ICON_VIEW_ITEM (items->data);
 
-      exo_icon_view_calculate_item_size (icon_view, item);
+      //exo_icon_view_calculate_item_size (icon_view, item);
 
-      rowspan = 1 + (item->area.height - 1) / (item_height + priv->row_spacing);
+      rowspan = 1 + (item->bounding_box.height - 1) / (item_height + priv->row_spacing);
 
-      item->area.height = rowspan * item_height + (rowspan - 1) * priv->row_spacing;
+      item->bounding_box.height = rowspan * item_height + (rowspan - 1) * priv->row_spacing;
 
-      current_height += item->area.height + priv->row_spacing + 2 * focus_width;
+      current_height += item->bounding_box.height + priv->row_spacing + 2 * focus_width;
 
       if (G_LIKELY (items != first_item))
         {
@@ -3548,8 +3568,8 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
             break;
         }
 
-      item->area.y = y + focus_width;
-      item->area.x = *x;
+      item->bounding_box.y = y + focus_width;
+      item->bounding_box.x = *x;
 
       y = current_height - (priv->margin + focus_width);
 
@@ -3578,8 +3598,8 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
       exo_icon_view_calculate_item_size2 (icon_view, item, max_width, max_height);
 
       /* We may want to readjust the new x coordinate. */
-      if (item->area.x + item->area.width + focus_width + priv->column_spacing > *x)
-        *x = item->area.x + item->area.width + focus_width + priv->column_spacing;
+      if (item->bounding_box.x + item->bounding_box.width + focus_width + priv->column_spacing > *x)
+        *x = item->bounding_box.x + item->bounding_box.width + focus_width + priv->column_spacing;
     }
 
   return last_item;
@@ -3691,7 +3711,7 @@ exo_icon_view_layout_rows (ExoIconView *icon_view,
 
 
 
-static void
+static gboolean
 exo_icon_view_layout (ExoIconView *icon_view)
 {
 
@@ -3700,11 +3720,22 @@ exo_icon_view_layout (ExoIconView *icon_view)
 
     /* verify that we still have a valid model */
     if (priv->model == NULL)
-        return;
+        return TRUE;
+
+    //printf("==> exo_icon_view_layout\n");
 
     exo_icon_view_update_cached_style_properties(icon_view);
 
     gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
+
+    priv->rough_item_width = 1024;
+    priv->rough_item_height = 1024;
+    priv->fairly_layouted_items_at_this_step = 0;
+    priv->max_fairly_layouted_items_at_one_step = 100 + priv->layout_prio * 250;
+    priv->items_seen = 0;
+    priv->rought_items_left = 0;
+    if (priv->layout_prio < 10)
+        priv->layout_prio++;
 
     /* determine the layout mode */
     if (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
@@ -3718,7 +3749,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
             {
                 ExoIconViewItem * item = icons->data;
                 exo_icon_view_calculate_item_size (icon_view, item);
-                item_width = MAX (item_width, item->area.width);
+                item_width = MAX (item_width, item->bounding_box.width);
             }
         }
 
@@ -3749,7 +3780,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
         {
             ExoIconViewItem * item = icons->data;
             exo_icon_view_calculate_item_size (icon_view, item);
-            item_height = MAX (item_height, item->area.height);
+            item_height = MAX (item_height, item->bounding_box.height);
         }
 
         long maximum_height = 0;
@@ -3781,11 +3812,13 @@ exo_icon_view_layout (ExoIconView *icon_view)
                            MAX (priv->height, allocation.height));
     }
 
-    /* drop any pending layout idle source */
-    if (priv->layout_idle_id != 0)
-        g_source_remove (priv->layout_idle_id);
-
     gtk_widget_queue_draw (GTK_WIDGET (icon_view));
+/*
+    printf("    fairly_layouted_items_at_this_step = %ld\n", priv->fairly_layouted_items_at_this_step);
+    printf("    items_seen = %ld\n", priv->items_seen);
+    printf("    rought_items_left = %ld\n", priv->rought_items_left);
+*/
+    return priv->rought_items_left == 0;
 }
 
 
@@ -3811,10 +3844,11 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
 #if GTK_CHECK_VERSION(3, 0, 0)
   GtkRequisition       requisition;
 #endif
-  const ExoIconViewPrivate *priv = icon_view->priv;
+  ExoIconViewPrivate *priv = icon_view->priv;
 
-  if (G_LIKELY (item->area.width != -1))
-    return;
+  priv->items_seen++;
+  if (item->layout_done)
+    goto size_estimation;
 
   update_indeces(icon_view);
 
@@ -3834,15 +3868,44 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
       item->cell_areas = (GdkRectangle *) (buffer + item->n_cells * sizeof (GdkRectangle));
     }
 
+  gboolean doing_rough_layout = priv->fairly_layouted_items_at_this_step > priv->max_fairly_layouted_items_at_one_step;
+
+  item->rough_layout_done = TRUE;
+
+  if (doing_rough_layout)
+  {
+    item->bounding_box.width  = priv->rough_item_width;
+    item->bounding_box.height  = priv->rough_item_height;
+
+    for (lp = priv->cell_list; lp != NULL; lp = lp->next)
+    {
+      info = EXO_ICON_VIEW_CELL_INFO (lp->data);
+      if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+      {
+          item->cell_boxes[info->position].width = item->bounding_box.width / item->n_cells;
+          item->cell_boxes[info->position].height = item->bounding_box.height;
+      }
+      else
+      {
+          item->cell_boxes[info->position].width = item->bounding_box.width;
+          item->cell_boxes[info->position].height = item->bounding_box.height / item->n_cells;
+      }
+    }
+
+    priv->rought_items_left++;
+
+    return;
+  }
+
   exo_icon_view_set_cell_data (icon_view, item, FALSE);
 
-  item->area.width = 0;
-  item->area.height = 0;
+  item->bounding_box.width = 0;
+  item->bounding_box.height = 0;
   for (lp = priv->cell_list; lp != NULL; lp = lp->next)
     {
       info = EXO_ICON_VIEW_CELL_INFO (lp->data);
       if (G_UNLIKELY (!gtk_cell_renderer_get_visible(info->cell)))
-        continue;
+         continue;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
       gtk_cell_renderer_get_preferred_size (info->cell, GTK_WIDGET (icon_view),
@@ -3858,18 +3921,27 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
 
       if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
         {
-          item->area.width += item->cell_boxes[info->position].width + (info->position > 0 ? priv->spacing : 0);
-          item->area.height = MAX (item->area.height, item->cell_boxes[info->position].height);
+          item->bounding_box.width += item->cell_boxes[info->position].width + (info->position > 0 ? priv->spacing : 0);
+          item->bounding_box.height = MAX (item->bounding_box.height, item->cell_boxes[info->position].height);
         }
       else
         {
-          item->area.width = MAX (item->area.width, item->cell_boxes[info->position].width);
-          item->area.height += item->cell_boxes[info->position].height + (info->position > 0 ? priv->spacing : 0);
+          item->bounding_box.width = MAX (item->bounding_box.width, item->cell_boxes[info->position].width);
+          item->bounding_box.height += item->cell_boxes[info->position].height + (info->position > 0 ? priv->spacing : 0);
         }
     }
 
-  item->area.width += priv->item_padding * 2;
-  item->area.height += priv->item_padding * 2;
+  item->bounding_box.width += priv->item_padding * 2;
+  item->bounding_box.height += priv->item_padding * 2;
+
+  priv->fairly_layouted_items_at_this_step++;
+
+  item->layout_done = TRUE;
+
+size_estimation:
+
+    priv->rough_item_width = MIN(priv->rough_item_width, item->bounding_box.width);
+    priv->rough_item_height = MIN(priv->rough_item_width, item->bounding_box.height);
 }
 
 
@@ -3897,31 +3969,31 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
 
   if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
     {
-      item->area.height = 0;
+      item->bounding_box.height = 0;
       for (i = 0; i < priv->n_cells; ++i)
         {
           if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            item->area.height = MAX (item->area.height, max_height[i]);
+            item->bounding_box.height = MAX (item->bounding_box.height, max_height[i]);
           else
-            item->area.height += max_height[i] + (i > 0 ? spacing : 0);
+            item->bounding_box.height += max_height[i] + (i > 0 ? spacing : 0);
         }
-      item->area.height += priv->item_padding * 2;
+      item->bounding_box.height += priv->item_padding * 2;
     }
   else
     {
-      item->area.width = 0;
+      item->bounding_box.width = 0;
       for (i = 0; i < priv->n_cells; ++i)
         {
           if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            item->area.width += max_width[i] + (i > 0 ? spacing : 0);
+            item->bounding_box.width += max_width[i] + (i > 0 ? spacing : 0);
           else
-            item->area.width = MAX (item->area.width, max_width[i]);
+            item->bounding_box.width = MAX (item->bounding_box.width, max_width[i]);
         }
-      item->area.width += priv->item_padding * 2;
+      item->bounding_box.width += priv->item_padding * 2;
     }
 
-  cell_area.x = item->area.x + priv->item_padding;
-  cell_area.y = item->area.y + priv->item_padding;
+  cell_area.x = item->bounding_box.x + priv->item_padding;
+  cell_area.y = item->bounding_box.y + priv->item_padding;
 
   for (k = 0; k < 2; ++k)
     {
@@ -3934,11 +4006,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
           if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
             {
               cell_area.width = item->cell_boxes[info->position].width;
-              cell_area.height = item->area.height - 2 * priv->item_padding;
+              cell_area.height = item->bounding_box.height - 2 * priv->item_padding;
             }
           else
             {
-              cell_area.width = item->area.width - 2 * priv->item_padding;
+              cell_area.width = item->bounding_box.width - 2 * priv->item_padding;
               cell_area.height = max_height[i];
             }
 
@@ -3967,7 +4039,11 @@ exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
   if (G_UNLIKELY (rtl && priv->orientation == GTK_ORIENTATION_HORIZONTAL))
     {
       for (i = 0; i < icon_view->priv->n_cells; i++)
-        item->cell_boxes[i].x = item->area.x + item->area.width - (item->cell_boxes[i].x + item->cell_boxes[i].width - item->area.x);
+      {
+        item->cell_boxes[i].x =
+            item->bounding_box.x + item->bounding_box.width -
+            (item->cell_boxes[i].x + item->cell_boxes[i].width - item->bounding_box.x);
+      }
     }
 }
 
@@ -3979,7 +4055,10 @@ exo_icon_view_invalidate_sizes (ExoIconView *icon_view)
   GList *lp;
 
   for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
-    EXO_ICON_VIEW_ITEM (lp->data)->area.width = -1;
+  {
+    EXO_ICON_VIEW_ITEM (lp->data)->layout_done = FALSE;
+    EXO_ICON_VIEW_ITEM (lp->data)->rough_layout_done = FALSE;
+  }
   exo_icon_view_queue_layout (icon_view);
 }
 
@@ -4008,6 +4087,8 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
 
   exo_icon_view_set_cell_data (icon_view, item, TRUE);
 
+  GdkRectangle item_area = item_get_bounding_box(item);
+
   if (G_UNLIKELY(item->selected && !fm_config->exo_icon_draw_rectangle_around_selected_item))
     {
       flags = GTK_CELL_RENDERER_SELECTED;
@@ -4026,13 +4107,13 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
           gtk_render_background (style_context, drawable,
                                  x - icon_view->priv->item_padding,
                                  y - icon_view->priv->item_padding,
-                                 item->area.width  + icon_view->priv->item_padding * 2,
-                                 item->area.height + icon_view->priv->item_padding * 2);
+                                 item_area.width  + icon_view->priv->item_padding * 2,
+                                 item_area.height + icon_view->priv->item_padding * 2);
           gtk_render_frame (style_context, drawable,
                             x - icon_view->priv->item_padding,
                             y - icon_view->priv->item_padding,
-                            item->area.width  + icon_view->priv->item_padding * 2,
-                            item->area.height + icon_view->priv->item_padding * 2);
+                            item_area.width  + icon_view->priv->item_padding * 2,
+                            item_area.height + icon_view->priv->item_padding * 2);
 #else
           gtk_paint_flat_box (GTK_WIDGET (icon_view)->style,
                   (GdkWindow *) drawable,
@@ -4042,7 +4123,7 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
                   GTK_WIDGET (icon_view),
                   "icon_view_item",
                   x, y,
-                  item->area.width, item->area.height);
+                  item_area.width, item_area.height);
 #endif
         }
   }
@@ -4081,14 +4162,14 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
       gdk_draw_rectangle (drawable,
                           GTK_WIDGET (icon_view)->style->black_gc,
                           FALSE,
-                          x - item->area.x + item->cell_boxes[info->position].x,
-                          y - item->area.y + item->cell_boxes[info->position].y,
+                          x - item_area.x + item->cell_boxes[info->position].x,
+                          y - item_area.y + item->cell_boxes[info->position].y,
                           item->cell_boxes[info->position].width, item->cell_boxes[info->position].height);
 #endif
 
       cell_area = item->cell_boxes[info->position];
-      cell_area.x += x - item->area.x;
-      cell_area.y += y - item->area.y;
+      cell_area.x += x - item_area.x;
+      cell_area.y += y - item_area.y;
 
       gtk_cell_renderer_render (info->cell,
                                 drawable,
@@ -4118,10 +4199,11 @@ exo_icon_view_queue_draw_item (ExoIconView     *icon_view,
   GdkRectangle rect;
   gint         focus_width = icon_view->priv->style_focus_line_width;
 
-  rect.x = item->area.x - focus_width;
-  rect.y = item->area.y - focus_width;
-  rect.width = item->area.width + 2 * focus_width;
-  rect.height = item->area.height + 2 * focus_width;
+  GdkRectangle item_area = item_get_bounding_box(item);
+  rect.x = item_area.x - focus_width;
+  rect.y = item_area.y - focus_width;
+  rect.width = item_area.width + 2 * focus_width;
+  rect.height = item_area.height + 2 * focus_width;
 
   if (icon_view->priv->bin_window)
     gdk_window_invalidate_rect (icon_view->priv->bin_window, &rect, TRUE);
@@ -4134,12 +4216,16 @@ layout_callback (gpointer user_data)
 {
   ExoIconView *icon_view = EXO_ICON_VIEW (user_data);
 
+  gboolean _continue = FALSE;
+
   GDK_THREADS_ENTER ();
   if(!g_source_is_destroyed(g_main_current_source()))
-    exo_icon_view_layout (icon_view);
+  {
+    _continue = !exo_icon_view_layout(icon_view);
+  }
   GDK_THREADS_LEAVE();
 
-  return FALSE;
+  return _continue;
 }
 
 
@@ -4155,8 +4241,9 @@ layout_destroy (gpointer user_data)
 static void
 exo_icon_view_queue_layout (ExoIconView *icon_view)
 {
-  if (G_UNLIKELY (icon_view->priv->layout_idle_id == 0))
-    icon_view->priv->layout_idle_id = g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, layout_callback, icon_view, layout_destroy);
+    if (icon_view->priv->layout_idle_id == 0)
+        icon_view->priv->layout_idle_id =
+            g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, layout_callback, icon_view, layout_destroy);
 }
 
 
@@ -4306,10 +4393,8 @@ exo_icon_view_row_changed (GtkTreeModel *model,
   if (G_UNLIKELY (item->selected))
     g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
 
-  /* recalculate layout (a value of -1 for width
-   * indicates that the item needs to be layouted).
-   */
-  item->area.width = -1;
+  item->layout_done = FALSE;
+  item->rough_layout_done = FALSE;
   exo_icon_view_queue_layout (icon_view);
   verify_items (icon_view);
 }
@@ -4330,7 +4415,8 @@ exo_icon_view_row_inserted (GtkTreeModel *model,
   /* allocate the new item */
   item = g_slice_new0 (ExoIconViewItem);
   item->iter = *iter;
-  item->area.width = -1;
+  item->layout_done = FALSE;
+  item->rough_layout_done = FALSE;
   item->index = idx;
   icon_view->priv->items = g_list_insert (icon_view->priv->items, item, idx);
 
@@ -4646,7 +4732,8 @@ find_item_page_up_down (ExoIconView     *icon_view,
   GList *item = g_list_find (icon_view->priv->items, current);
   GList *next;
   gint   col = current->col;
-  gint   y = current->area.y + count * gtk_adjustment_get_page_size(icon_view->priv->vadjustment);
+  GdkRectangle current_item_area = item_get_bounding_box(current);
+  gint   y = current_item_area.y + count * gtk_adjustment_get_page_size(icon_view->priv->vadjustment);
 
   if (count > 0)
     {
@@ -4656,7 +4743,10 @@ find_item_page_up_down (ExoIconView     *icon_view,
             if (EXO_ICON_VIEW_ITEM (next->data)->col == col)
               break;
 
-          if (next == NULL || EXO_ICON_VIEW_ITEM (next->data)->area.y > y)
+          if (next == NULL)
+            break;
+          GdkRectangle area = item_get_bounding_box(EXO_ICON_VIEW_ITEM(next->data));
+          if (area.y > y)
             break;
         }
     }
@@ -4668,7 +4758,10 @@ find_item_page_up_down (ExoIconView     *icon_view,
             if (EXO_ICON_VIEW_ITEM (next->data)->col == col)
               break;
 
-          if (next == NULL || EXO_ICON_VIEW_ITEM (next->data)->area.y < y)
+          if (next == NULL)
+            break;
+          GdkRectangle area = item_get_bounding_box(EXO_ICON_VIEW_ITEM(next->data));
+          if (area.y < y)
             break;
         }
     }
@@ -5048,21 +5141,23 @@ exo_icon_view_scroll_to_item (ExoIconView     *icon_view,
 
   gdk_window_get_position (icon_view->priv->bin_window, &x, &y);
 
-  if (y + item->area.y - focus_width < 0)
+  GdkRectangle item_area = item_get_bounding_box(item);
+
+  if (y + item_area.y - focus_width < 0)
     gtk_adjustment_set_value (icon_view->priv->vadjustment,
-                              gtk_adjustment_get_value(icon_view->priv->vadjustment) + y + item->area.y - focus_width);
-  else if (y + item->area.y + item->area.height + focus_width > allocation.height)
+                              gtk_adjustment_get_value(icon_view->priv->vadjustment) + y + item_area.y - focus_width);
+  else if (y + item_area.y + item_area.height + focus_width > allocation.height)
     gtk_adjustment_set_value (icon_view->priv->vadjustment,
-                              gtk_adjustment_get_value(icon_view->priv->vadjustment) + y + item->area.y + item->area.height
+                              gtk_adjustment_get_value(icon_view->priv->vadjustment) + y + item_area.y + item_area.height
                               + focus_width - allocation.height);
 
-  if (x + item->area.x - focus_width < 0)
+  if (x + item_area.x - focus_width < 0)
     {
       gtk_adjustment_set_value (icon_view->priv->hadjustment,
-                                gtk_adjustment_get_value(icon_view->priv->hadjustment) + x + item->area.x - focus_width);
+                                gtk_adjustment_get_value(icon_view->priv->hadjustment) + x + item_area.x - focus_width);
     }
-  else if (x + item->area.x + item->area.width + focus_width > allocation.width
-        && item->area.width < allocation.width)
+  else if (x + item_area.x + item_area.width + focus_width > allocation.width
+        && item_area.width < allocation.width)
     {
       /* the second condition above is to make sure that we don't scroll horizontally if the item
        * width is larger than the allocation width. Fixes a weird scrolling bug in the compact view.
@@ -5070,7 +5165,7 @@ exo_icon_view_scroll_to_item (ExoIconView     *icon_view,
        */
 
       gtk_adjustment_set_value (icon_view->priv->hadjustment,
-                                gtk_adjustment_get_value(icon_view->priv->hadjustment) + x + item->area.x + item->area.width
+                                gtk_adjustment_get_value(icon_view->priv->hadjustment) + x + item_area.x + item_area.width
                                 + focus_width - allocation.width);
     }
 
@@ -5542,10 +5637,11 @@ exo_icon_view_get_visible_range (const ExoIconView *icon_view,
   for (i = 0, lp = priv->items; lp != NULL; ++i, lp = lp->next)
     {
       item = (const ExoIconViewItem *) lp->data;
-      if ((item->area.x + item->area.width >= (gint) gtk_adjustment_get_value(priv->hadjustment)) &&
-          (item->area.y + item->area.height >= (gint) gtk_adjustment_get_value(priv->vadjustment)) &&
-          (item->area.x <= (gint) (gtk_adjustment_get_value(priv->hadjustment) + gtk_adjustment_get_page_size(priv->hadjustment))) &&
-          (item->area.y <= (gint) (gtk_adjustment_get_value(priv->vadjustment) + gtk_adjustment_get_page_size(priv->vadjustment))))
+      GdkRectangle item_area = item_get_bounding_box(item);
+      if ((item_area.x + item_area.width >= (gint) gtk_adjustment_get_value(priv->hadjustment)) &&
+          (item_area.y + item_area.height >= (gint) gtk_adjustment_get_value(priv->vadjustment)) &&
+          (item_area.x <= (gint) (gtk_adjustment_get_value(priv->hadjustment) + gtk_adjustment_get_page_size(priv->hadjustment))) &&
+          (item_area.y <= (gint) (gtk_adjustment_get_value(priv->vadjustment) + gtk_adjustment_get_page_size(priv->vadjustment))))
         {
           if (start_index == -1)
             start_index = i;
@@ -5845,7 +5941,8 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
             {
               item = g_slice_new0 (ExoIconViewItem);
               item->iter = iter;
-              item->area.width = -1;
+              item->layout_done = FALSE;
+              item->rough_layout_done = FALSE;
               item->index = n++;
               items = g_list_prepend (items, item);
             }
@@ -6404,19 +6501,21 @@ exo_icon_view_scroll_to_path (ExoIconView *icon_view,
           gfloat offset, value;
           GtkAllocation allocation;
 
+          GdkRectangle item_area = item_get_bounding_box(item);
+
           gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
           gdk_window_get_position (icon_view->priv->bin_window, &x, &y);
 
-          offset =  y + item->area.y - focus_width -
-            row_align * (allocation.height - item->area.height);
+          offset =  y + item_area.y - focus_width -
+            row_align * (allocation.height - item_area.height);
           value = CLAMP (gtk_adjustment_get_value(icon_view->priv->vadjustment) + offset,
                          gtk_adjustment_get_lower(icon_view->priv->vadjustment),
                          gtk_adjustment_get_upper(icon_view->priv->vadjustment) - gtk_adjustment_get_page_size(icon_view->priv->vadjustment));
           gtk_adjustment_set_value (icon_view->priv->vadjustment, value);
 
-          offset = x + item->area.x - focus_width -
-            col_align * (allocation.width - item->area.width);
+          offset = x + item_area.x - focus_width -
+            col_align * (allocation.width - item_area.width);
           value = CLAMP (gtk_adjustment_get_value(icon_view->priv->hadjustment) + offset,
                          gtk_adjustment_get_lower(icon_view->priv->hadjustment),
                          gtk_adjustment_get_upper(icon_view->priv->hadjustment) - gtk_adjustment_get_page_size(icon_view->priv->hadjustment));
@@ -7295,8 +7394,9 @@ exo_icon_view_drag_begin (GtkWidget      *widget,
 
   _exo_return_if_fail (item != NULL);
 
-  x = icon_view->priv->press_start_x - item->area.x + 1;
-  y = icon_view->priv->press_start_y - item->area.y + 1;
+  GdkRectangle item_area = item_get_bounding_box(item);
+  x = icon_view->priv->press_start_x - item_area.x + 1;
+  y = icon_view->priv->press_start_y - item_area.y + 1;
 
   path = gtk_tree_path_new_from_indices (item->index, -1);
   icon = exo_icon_view_create_drag_icon (icon_view, path);
@@ -7875,15 +7975,17 @@ exo_icon_view_get_dest_item_at_pos (ExoIconView              *icon_view,
   if (G_LIKELY (path != NULL))
     *path = gtk_tree_path_new_from_indices (item->index, -1);
 
+  GdkRectangle item_area = item_get_bounding_box(item);
+
   if (G_LIKELY (pos != NULL))
     {
-      if (drag_x < item->area.x + item->area.width / 4)
+      if (drag_x < item_area.x + item_area.width / 4)
         *pos = EXO_ICON_VIEW_DROP_LEFT;
-      else if (drag_x > item->area.x + item->area.width * 3 / 4)
+      else if (drag_x > item_area.x + item_area.width * 3 / 4)
         *pos = EXO_ICON_VIEW_DROP_RIGHT;
-      else if (drag_y < item->area.y + item->area.height / 4)
+      else if (drag_y < item_area.y + item_area.height / 4)
         *pos = EXO_ICON_VIEW_DROP_ABOVE;
-      else if (drag_y > item->area.y + item->area.height * 3 / 4)
+      else if (drag_y > item_area.y + item_area.height * 3 / 4)
         *pos = EXO_ICON_VIEW_DROP_BELOW;
       else
         *pos = EXO_ICON_VIEW_DROP_INTO;
@@ -7940,28 +8042,32 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
       ExoIconViewItem *item = lp->data;
       if (G_UNLIKELY (idx == item->index))
         {
+
+          GdkRectangle item_area = item_get_bounding_box(item);
+
 #if GTK_CHECK_VERSION(3, 0, 0)
           s = cairo_image_surface_create (CAIRO_FORMAT_RGB24,
-                                          item->area.width + 2,
-                                          item->area.height + 2);
+                                          item_area.width + 2,
+                                          item_area.height + 2);
 
           cr = cairo_create (s);
 #else
           drawable = gdk_pixmap_new (icon_view->priv->bin_window,
-                                     item->area.width + 2,
-                                     item->area.height + 2,
+                                     item_area.width + 2,
+                                     item_area.height + 2,
                                      -1);
 
           cr = gdk_cairo_create (drawable);
 #endif
           gdk_cairo_set_source_color (cr, &style->base[gtk_widget_get_state (widget)]);
-          cairo_rectangle (cr, 0, 0, item->area.width + 2, item->area.height + 2);
+          cairo_rectangle (cr, 0, 0, item_area.width + 2, item_area.height + 2);
           cairo_fill (cr);
+
 
           area.x = 0;
           area.y = 0;
-          area.width = item->area.width;
-          area.height = item->area.height;
+          area.width = item_area.width;
+          area.height = item_area.height;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
           exo_icon_view_paint_item (icon_view, item, &area, cr, 1, 1, FALSE);
@@ -7971,15 +8077,15 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
 #endif
 
           gdk_cairo_set_source_color (cr, &style->black);
-          cairo_rectangle (cr, 1, 1, item->area.width + 1, item->area.height + 1);
+          cairo_rectangle (cr, 1, 1, item_area.width + 1, item_area.height + 1);
           cairo_stroke (cr);
 
           cairo_destroy (cr);
 
 #if GTK_CHECK_VERSION(3, 0, 0)
           pixbuf = gdk_pixbuf_get_from_surface (s, 0, 0,
-                                                item->area.width + 2,
-                                                item->area.height + 2);
+                                                item_area.width + 2,
+                                                item_area.height + 2);
           cairo_surface_destroy (s);
 
           return pixbuf;
@@ -7987,8 +8093,8 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
           pixbuf = gdk_pixbuf_get_from_drawable (NULL, drawable,
                                                  gdk_drawable_get_colormap (drawable),
                                                  0, 0, 0, 0,
-                                                 item->area.width + 2,
-                                                 item->area.height + 2);
+                                                 item_area.width + 2,
+                                                 item_area.height + 2);
           g_object_unref (drawable);
           return pixbuf;
 #endif
@@ -9388,8 +9494,9 @@ exo_icon_view_item_accessible_image_get_image_position (AtkImage    *image,
 
   if (get_pixbuf_box (EXO_ICON_VIEW (item->widget), item->item, &box))
     {
-      *x+= box.x - item->item->area.x;
-      *y+= box.y - item->item->area.y;
+      GdkRectangle area = item_get_bounding_box(item->item);
+      *x+= box.x - area.x;
+      *y+= box.y - area.y;
     }
 
 }
@@ -9835,14 +9942,16 @@ exo_icon_view_item_accessible_get_extents (AtkComponent *component,
   if (atk_state_set_contains_state (item->state_set, ATK_STATE_DEFUNCT))
     return;
 
-  *width = item->item->area.width;
-  *height = item->item->area.height;
+  GdkRectangle area = item_get_bounding_box(item->item);
+
+  *width = area.width;
+  *height = area.height;
   if (exo_icon_view_item_accessible_is_showing (item))
     {
       parent_obj = gtk_widget_get_accessible (item->widget);
       atk_component_get_position (ATK_COMPONENT (parent_obj), &l_x, &l_y, coord_type);
-      *x = l_x + item->item->area.x;
-      *y = l_y + item->item->area.y;
+      *x = l_x + area.x;
+      *y = l_y + area.y;
     }
   else
     {
@@ -9965,10 +10074,12 @@ exo_icon_view_item_accessible_is_showing (ExoIconViewItemAccessible *item)
   visible_rect.width = allocation.width;
   visible_rect.height = allocation.height;
 
-  if (((item->item->area.x + item->item->area.width) < visible_rect.x) ||
-     ((item->item->area.y + item->item->area.height) < (visible_rect.y)) ||
-     (item->item->area.x > (visible_rect.x + visible_rect.width)) ||
-     (item->item->area.y > (visible_rect.y + visible_rect.height)))
+  GdkRectangle area = item_get_bounding_box(item->item);
+
+  if (((area.x + area.width) < visible_rect.x) ||
+     ((area.y + area.height) < (visible_rect.y)) ||
+     (area.x > (visible_rect.x + visible_rect.width)) ||
+     (area.y > (visible_rect.y + visible_rect.height)))
     is_showing =  FALSE;
   else
     is_showing = TRUE;
