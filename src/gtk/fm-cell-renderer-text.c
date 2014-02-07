@@ -301,8 +301,6 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
     pango_layout_get_pixel_extents(layout, NULL, &layout_rect);
 
 
-
-//    if(flags & (GTK_CELL_RENDERER_SELECTED|GTK_CELL_RENDERER_FOCUSED))
     {
         rect.x = cell_area->x + x_offset;
         rect.y = cell_area->y + y_offset;

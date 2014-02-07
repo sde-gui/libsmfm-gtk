@@ -460,12 +460,19 @@ static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv)
 static void on_show_full_names_changed(FmConfig* cfg, FmStandardView* fv)
 {
     g_return_if_fail(fv->renderer_text);
-    if(fv->mode == FM_FV_ICON_VIEW)
-        g_object_set((GObject*)fv->renderer_text,
-                     "max-height", cfg->show_full_names ? 0 : 70, NULL);
-    else /* thumbnail view */
-        g_object_set((GObject*)fv->renderer_text,
-                     "max-height", cfg->show_full_names ? 0 : 90, NULL);
+
+    int max_height = 0;
+
+    if (!cfg->show_full_names)
+    {
+        if(fv->mode == FM_FV_ICON_VIEW)
+            max_height = 50;
+        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
+            max_height = 80;
+    }
+
+    g_object_set((GObject*)fv->renderer_text, "max-height", max_height, NULL);
+
     /* FIXME: does it require redraw request? */
 }
 
@@ -580,33 +587,28 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
     {
         if(fv->show_full_names_handler == 0)
             fv->show_full_names_handler = g_signal_connect(fm_config, "changed::show_full_names", G_CALLBACK(on_show_full_names_changed), fv);
-        if(fv->mode == FM_FV_ICON_VIEW)
-        {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
 
-            render = fm_cell_renderer_text_new();
-            g_object_set((GObject*)render,
-                         "wrap-mode", PANGO_WRAP_WORD_CHAR,
-                         "max-height", fm_config->show_full_names ? 0 : 70,
-                         "alignment", PANGO_ALIGN_CENTER,
-                         "xalign", 0.5,
-                         "yalign", 0.0,
-                         NULL );
+        render = fm_cell_renderer_text_new();
+        g_object_set((GObject*)render,
+                     "wrap-mode", PANGO_WRAP_WORD_CHAR,
+                     "alignment", PANGO_ALIGN_CENTER,
+                     "xalign", 0.5,
+                     "yalign", 0.0,
+                     NULL);
+
+        if (fv->mode == FM_FV_ICON_VIEW)
+        {
+            fv->icon_size_changed_handler = g_signal_connect(fm_config,
+                "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
+
         }
-        else
+        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
         {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
-
-            render = fm_cell_renderer_text_new();
-            g_object_set((GObject*)render,
-                         "wrap-mode", PANGO_WRAP_WORD_CHAR,
-                         "max-height", fm_config->show_full_names ? 0 : 90,
-                         "alignment", PANGO_ALIGN_CENTER,
-                         "xalign", 0.5,
-                         "yalign", 0.0,
-                         NULL );
+            fv->icon_size_changed_handler = g_signal_connect(fm_config,
+                "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
         }
     }
+
     gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), render, TRUE);
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), render,
                                 "text", FM_FOLDER_MODEL_COL_NAME );
@@ -629,6 +631,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
 
     update_icon_size(fv);
 
+    on_show_full_names_changed(fm_config, fv);
 
     exo_icon_view_set_search_column((ExoIconView*)fv->view, FM_FOLDER_MODEL_COL_NAME);
     g_signal_connect(fv->view, "item-activated", G_CALLBACK(on_icon_view_item_activated), fv);
