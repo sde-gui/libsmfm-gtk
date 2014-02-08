@@ -565,7 +565,7 @@ struct _ExoIconViewPrivate
   GtkCellEditable *editable;
   ExoIconViewItem *prelit_item;
 
-  ExoIconViewItem *last_single_clicked;
+  ExoIconViewItem *last_single_clicked_item;
 
   GList *cell_list;
   gint n_cells;
@@ -2624,8 +2624,8 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
               icon_view->priv->press_start_y = event->y;
             }
 
-          if (G_LIKELY (icon_view->priv->last_single_clicked == NULL))
-            icon_view->priv->last_single_clicked = item;
+          if (G_LIKELY (icon_view->priv->last_single_clicked_item == NULL))
+            icon_view->priv->last_single_clicked_item = item;
 
           /* cancel the current editing, if it exists */
           exo_icon_view_stop_editing (icon_view, TRUE);
@@ -2671,7 +2671,7 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
             }
         }
 
-      icon_view->priv->last_single_clicked = NULL;
+      icon_view->priv->last_single_clicked_item = NULL;
       icon_view->priv->pressed_button = -1;
     }
 
@@ -2710,7 +2710,7 @@ exo_icon_view_button_release_event (GtkWidget      *widget,
         {
           /* determine the item at the mouse coords and check if this is the last single clicked one */
           item = exo_icon_view_get_item_at_coords (icon_view, event->x, event->y, NULL);
-          if (G_LIKELY (item != NULL && item == icon_view->priv->last_single_clicked))
+          if (G_LIKELY (item != NULL && item == icon_view->priv->last_single_clicked_item))
             {
               /* emit an "item-activated" signal for this item */
               path = gtk_tree_path_new_from_indices (item->index, -1);
@@ -2719,7 +2719,7 @@ exo_icon_view_button_release_event (GtkWidget      *widget,
             }
 
           /* reset the last single clicked item */
-          icon_view->priv->last_single_clicked = NULL;
+          icon_view->priv->last_single_clicked_item = NULL;
         }
 
       /* reset the pressed_button state */
@@ -5916,7 +5916,7 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
       icon_view->priv->anchor_item = NULL;
       icon_view->priv->cursor_item = NULL;
       icon_view->priv->prelit_item = NULL;
-      icon_view->priv->last_single_clicked = NULL;
+      icon_view->priv->last_single_clicked_item = NULL;
       icon_view->priv->width = 0;
       icon_view->priv->height = 0;
 
