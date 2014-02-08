@@ -135,6 +135,7 @@ struct _FmFolderViewInterface
 
     FmFolder* (*get_folder)(FmFolderView* fv);
 
+    void (*disconnect_model_with_delay)(FmFolderView* fv);
     void (*set_model)(FmFolderView* fv, FmFolderModel* model);
     FmFolderModel* (*get_model)(FmFolderView* fv);
 
@@ -178,6 +179,7 @@ FmFileInfo*     fm_folder_view_get_cwd_info(FmFolderView* fv);
 
 FmFolderModel*  fm_folder_view_get_model(FmFolderView* fv);
 void            fm_folder_view_set_model(FmFolderView* fv, FmFolderModel* model);
+void            fm_folder_view_disconnect_model_with_delay(FmFolderView* fv);
 
 gint            fm_folder_view_get_n_selected_files(FmFolderView* fv);
 FmFileInfoList* fm_folder_view_dup_selected_files(FmFolderView* fv);

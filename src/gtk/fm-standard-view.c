@@ -136,6 +136,9 @@ struct _FmStandardView
     /* for columns width handling */
     gint updated_col;
     gboolean name_updated;
+
+    guint delayed_model_disconnect_timeout_id;
+    gboolean model_being_disconnected;
 };
 
 struct _FmStandardViewClass
@@ -330,12 +333,14 @@ static void unset_model(FmStandardView* fv)
 {
     if(fv->model)
     {
+        fm_folder_view_unselect_all(FM_FOLDER_VIEW(fv));
+
         FmFolderModel* model = fv->model;
         /* g_debug("unset_model: %p, n_ref = %d", model, G_OBJECT(model)->ref_count); */
-        g_object_unref(model);
         g_signal_handlers_disconnect_by_func(model, on_row_inserted, fv);
         g_signal_handlers_disconnect_by_func(model, on_row_deleted, fv);
         g_signal_handlers_disconnect_by_func(model, on_row_changed, fv);
+        g_object_unref(model);
         fv->model = NULL;
     }
 }
@@ -420,6 +425,11 @@ static void fm_standard_view_dispose(GObject *object)
     {
         g_free(self->pattern);
         self->pattern = NULL;
+    }
+
+    if (self->delayed_model_disconnect_timeout_id)
+    {
+        g_source_remove(self->delayed_model_disconnect_timeout_id);
     }
 
     (* G_OBJECT_CLASS(fm_standard_view_parent_class)->dispose)(object);
@@ -1712,24 +1722,52 @@ static FmFolderModel* fm_standard_view_get_model(FmFolderView* ffv)
     return fv->model;
 }
 
+static gboolean delayed_model_disconnect_callback(gpointer user_data)
+{
+    FmStandardView* self = FM_STANDARD_VIEW(user_data);
+    if (self->model_being_disconnected)
+        fm_folder_view_set_model(FM_FOLDER_VIEW(self), NULL);
+    return FALSE;
+}
+
+static void delayed_model_disconnect_destroy_callback(gpointer user_data)
+{
+    FmStandardView* self = FM_STANDARD_VIEW(user_data);
+    self->delayed_model_disconnect_timeout_id = 0;
+}
+
+
+static void fm_standard_view_disconnect_model_with_delay(FmFolderView* ffv)
+{
+    FmStandardView* fv = FM_STANDARD_VIEW(ffv);
+
+    fv->model_being_disconnected = TRUE;
+
+    if (fv->delayed_model_disconnect_timeout_id == 0)
+    {
+        fv->delayed_model_disconnect_timeout_id =
+            g_timeout_add_full(G_PRIORITY_DEFAULT, 5000,
+                delayed_model_disconnect_callback, fv,
+                delayed_model_disconnect_destroy_callback);
+    }
+}
+
 static void fm_standard_view_set_model(FmFolderView* ffv, FmFolderModel* model)
 {
     FmStandardView* fv = FM_STANDARD_VIEW(ffv);
+
+    fv->model_being_disconnected = FALSE;
+
     unset_model(fv);
-    switch(fv->mode)
+
+    switch (fv->mode_settings.type)
     {
-    case FM_FV_LIST_VIEW:
+    case FmViewType_Tree:
         _check_tree_columns_defaults(fv);
         gtk_tree_view_set_model(GTK_TREE_VIEW(fv->view), GTK_TREE_MODEL(model));
         _reset_columns_widths(GTK_TREE_VIEW(fv->view));
         break;
-    case FM_FV_ICON_VIEW:
-        exo_icon_view_set_model(EXO_ICON_VIEW(fv->view), GTK_TREE_MODEL(model));
-        break;
-    case FM_FV_COMPACT_VIEW:
-        exo_icon_view_set_model(EXO_ICON_VIEW(fv->view), GTK_TREE_MODEL(model));
-        break;
-    case FM_FV_THUMBNAIL_VIEW:
+    case FmViewType_Icon:
         exo_icon_view_set_model(EXO_ICON_VIEW(fv->view), GTK_TREE_MODEL(model));
         break;
     }
@@ -1895,6 +1933,7 @@ static void fm_standard_view_view_init(FmFolderViewInterface* iface)
     iface->set_show_hidden = fm_standard_view_set_show_hidden;
     iface->get_show_hidden = fm_standard_view_get_show_hidden;
     iface->get_folder = fm_standard_view_get_folder;
+    iface->disconnect_model_with_delay = fm_standard_view_disconnect_model_with_delay;
     iface->set_model = fm_standard_view_set_model;
     iface->get_model = fm_standard_view_get_model;
     iface->count_selected_files = fm_standard_view_count_selected_files;

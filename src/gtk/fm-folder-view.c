@@ -662,6 +662,12 @@ void fm_folder_view_set_model(FmFolderView* fv, FmFolderModel* model)
     }
 }
 
+void fm_folder_view_disconnect_model_with_delay(FmFolderView* fv)
+{
+    g_return_if_fail(FM_IS_FOLDER_VIEW(fv));
+    FM_FOLDER_VIEW_GET_IFACE(fv)->disconnect_model_with_delay(fv);
+}
+
 /**
  * fm_folder_view_get_n_selected_files
  * @fv: a widget to inspect
