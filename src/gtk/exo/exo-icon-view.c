@@ -1594,11 +1594,7 @@ exo_icon_view_realize (GtkWidget *widget)
   GtkAllocation       allocation;
   gint                attributes_mask;
 
-#if GTK_CHECK_VERSION(2, 20, 0)
   gtk_widget_set_realized (widget, TRUE);
-#else
-  GTK_WIDGET_SET_FLAGS (widget, GTK_REALIZED);
-#endif
 
   /* Allocate the clipping window */
   gtk_widget_get_allocation (widget, &allocation);
@@ -1642,8 +1638,8 @@ exo_icon_view_realize (GtkWidget *widget)
   gtk_style_context_set_background (style, priv->bin_window);
   gtk_style_context_set_background (style, window);
 #else
-  style = gtk_style_attach (gtk_widget_get_style (widget), window);
-  gtk_widget_set_style (widget, style);
+  gtk_widget_style_attach(widget);
+  style = gtk_widget_get_style(widget);
   gdk_window_set_background (priv->bin_window, &style->base[gtk_widget_get_state(widget)]);
   gdk_window_set_background (window, &style->base[gtk_widget_get_state(widget)]);
 #endif
@@ -1851,6 +1847,8 @@ exo_icon_view_style_set (GtkWidget *widget,
   style = gtk_widget_get_style (widget);
   if (gtk_widget_get_realized (widget))
     gdk_window_set_background (icon_view->priv->bin_window, &style->base[gtk_widget_get_state(widget)]);
+
+  exo_icon_view_queue_draw(icon_view);
 }
 
 static void
