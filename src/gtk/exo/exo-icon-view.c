@@ -4870,11 +4870,7 @@ exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
 
     if (!priv->cursor_item)
     {
-        if (count > 0)
-            list = priv->items;
-        else
-            list = g_list_last (priv->items);
-
+        GList * list = priv->items;
         item = list ? list->data : NULL;
     }
     else
@@ -4973,13 +4969,7 @@ exo_icon_view_move_cursor_page_up_down (ExoIconView *icon_view,
 
     if (!priv->cursor_item)
     {
-        GList *list;
-
-        if (count > 0)
-            list = priv->items;
-        else
-            list = g_list_last (priv->items);
-
+        GList * list = priv->items;
         item = list ? list->data : NULL;
     }
     else
@@ -5039,14 +5029,10 @@ exo_icon_view_move_cursor_left_right (ExoIconView *icon_view,
     count *= -1;
 
   if (!icon_view->priv->cursor_item)
-    {
-      if (count > 0)
-        list = icon_view->priv->items;
-      else
-        list = g_list_last (icon_view->priv->items);
-
+  {
+      GList * list = icon_view->priv->items;
       item = list ? list->data : NULL;
-    }
+  }
   else
     {
       item = icon_view->priv->cursor_item;
