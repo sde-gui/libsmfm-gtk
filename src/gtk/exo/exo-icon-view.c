@@ -4902,7 +4902,7 @@ static GList * _find_matching_row_col(GList * list, int row_step, int col_step)
 
     if (step > 0)
     {
-        for (list = list->next; list != NULL; list = list->next)
+        for (list = list->next; list != NULL && list->next != NULL; list = list->next)
         {
             if (EXO_ICON_VIEW_ITEM(list->data)->row == row
              && EXO_ICON_VIEW_ITEM(list->data)->col == col)
