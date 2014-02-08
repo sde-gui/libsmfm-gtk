@@ -31,6 +31,7 @@
  */
 
 #include "fm-cell-renderer-text.h"
+#include <libsmfm-core/fm-config.h>
 
 static void fm_cell_renderer_text_get_property(GObject *object, guint param_id,
                                                GValue *value, GParamSpec *psec);
@@ -242,15 +243,17 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 #endif
 {
     FmCellRendererText *self = FM_CELL_RENDERER_TEXT(cell);
+
 #if GTK_CHECK_VERSION(3, 0, 0)
     GtkStyleContext* style;
-    GtkStateFlags state;
+    GtkStateFlags state = GTK_STATE_NORMAL;
     GdkRGBA * foreground_color = NULL;
 #else
     GtkStyle* style;
-    GtkStateType state;
+    GtkStateType state = GTK_STATE_NORMAL;
     GdkColor * foreground_color = NULL;
 #endif
+
     gboolean foreground_set = FALSE;
     gint x_offset;
     gint y_offset;
@@ -316,50 +319,55 @@ static void fm_cell_renderer_text_render(GtkCellRenderer *cell,
 
 #if GTK_CHECK_VERSION(3, 0, 0)
     style = gtk_widget_get_style_context(widget);
-#else
-    style = gtk_widget_get_style(widget);
-#endif
-    if(flags & GTK_CELL_RENDERER_SELECTED) /* item is selected */
-    {
-#if GTK_CHECK_VERSION(3, 0, 0)
-        GdkRGBA clr;
 
-        if(flags & GTK_CELL_RENDERER_INSENSITIVE) /* insensitive */
+    if (flags & GTK_CELL_RENDERER_SELECTED)
+    {
+        if(flags & GTK_CELL_RENDERER_INSENSITIVE)
             state = GTK_STATE_FLAG_INSENSITIVE;
         else
             state = GTK_STATE_FLAG_SELECTED;
 
+        GdkRGBA clr;
         gtk_style_context_get_background_color(style, state, &clr);
-#else
-        cairo_t *cr = gdk_cairo_create (window);
-        GdkColor clr;
 
-        if(flags & GTK_CELL_RENDERER_INSENSITIVE) /* insensitive */
+        gdk_cairo_rectangle(cr, &rect);
+        cairo_set_source_rgb(cr, clr.red / 65535., clr.green / 65535., clr.blue / 65535.);
+        cairo_fill (cr);
+    }
+#else
+
+    style = gtk_widget_get_style(widget);
+
+    if (flags & GTK_CELL_RENDERER_SELECTED)
+    {
+        if(flags & GTK_CELL_RENDERER_INSENSITIVE)
             state = GTK_STATE_INSENSITIVE;
         else
             state = GTK_STATE_SELECTED;
 
-        clr = style->bg[state];
-
-        /* paint the background */
-        if(expose_area)
+        if (!fm_config->exo_icon_draw_rectangle_around_selected_item) /* FIXME: Ugly hack! */
         {
-            gdk_cairo_rectangle(cr, expose_area);
-            cairo_clip(cr);
-        }
-#endif
-        gdk_cairo_rectangle(cr, &rect);
-        cairo_set_source_rgb(cr, clr.red / 65535., clr.green / 65535., clr.blue / 65535.);
-        cairo_fill (cr);
 
-#if !GTK_CHECK_VERSION(3, 0, 0)
-        cairo_destroy (cr);
-#endif
+            cairo_t *cr = gdk_cairo_create (window);
+
+            if(expose_area)
+            {
+                gdk_cairo_rectangle(cr, expose_area);
+                cairo_clip(cr);
+            }
+
+            GdkColor color = style->base[state];
+
+            gdk_cairo_rectangle(cr, &rect);
+            cairo_set_source_rgb(cr, color.red / 65535., color.green / 65535., color.blue / 65535.);
+            cairo_fill(cr);
+
+            cairo_destroy (cr);
+        }
     }
-#if !GTK_CHECK_VERSION(3, 0, 0)
-    else
-        state = GTK_STATE_NORMAL;
+
 #endif
+
 
     int x_align_offset = 0.5 * (cell_area->width  - layout_rect.width);
     int y_align_offset = 0.5 * (cell_area->height - layout_rect.height);

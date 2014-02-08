@@ -4129,7 +4129,8 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
 
   GdkRectangle item_area = item_get_bounding_box(item);
 
-  if (G_UNLIKELY(item->selected && !fm_config->exo_icon_draw_rectangle_around_selected_item))
+//  if (G_UNLIKELY(item->selected && !fm_config->exo_icon_draw_rectangle_around_selected_item))
+  if (G_UNLIKELY(item->selected))
     {
       flags = GTK_CELL_RENDERER_SELECTED;
     }
