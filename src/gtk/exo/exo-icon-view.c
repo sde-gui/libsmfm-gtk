@@ -1359,6 +1359,9 @@ exo_icon_view_finalize (GObject *object)
 {
   ExoIconView *icon_view = EXO_ICON_VIEW (object);
 
+  if (icon_view->priv->delayed_expose_timeout_id != 0)
+    g_source_remove (icon_view->priv->delayed_expose_timeout_id);
+
   /* drop the scroll adjustments */
   g_object_unref (G_OBJECT (icon_view->priv->hadjustment));
   g_object_unref (G_OBJECT (icon_view->priv->vadjustment));
@@ -1369,9 +1372,6 @@ exo_icon_view_finalize (GObject *object)
   /* be sure to cancel the single click timeout */
   if (icon_view->priv->single_click_timeout_id != 0)
     g_source_remove (icon_view->priv->single_click_timeout_id);
-
-  if (icon_view->priv->delayed_expose_timeout_id != 0)
-    g_source_remove (icon_view->priv->delayed_expose_timeout_id);
 
   /* kill the layout idle source (it's important to have this last!) */
   if (icon_view->priv->layout_idle_id != 0)
@@ -1914,12 +1914,12 @@ static void exo_icon_view_delayed_expose(ExoIconView * icon_view)
 
     if (priv->delayed_expose_timeout_id == 0)
         icon_view->priv->delayed_expose_timeout_id =
-            g_timeout_add_full(G_PRIORITY_DEFAULT, 300, delayed_expose_callback, icon_view, delayed_expose_destroy_callback);
+            g_timeout_add_full(G_PRIORITY_DEFAULT, 500, delayed_expose_callback, icon_view, delayed_expose_destroy_callback);
 }
 
 static void exo_icon_view_queue_draw(ExoIconView * icon_view)
 {
-    if (!icon_view->priv->delayed_expose_timeout_id)
+    if (icon_view->priv->delayed_expose_timeout_id == 0)
         gtk_widget_queue_draw(GTK_WIDGET(icon_view));
 }
 
@@ -2012,6 +2012,9 @@ exo_icon_view_expose_event (GtkWidget      *widget,
   /* paint all items that are affected by the expose event */
   FOR_EACH_VIEW_ITEM(item, priv->items,
   {
+      if (!item->layout_done)
+        exo_icon_view_queue_layout(icon_view);
+
       /* check if this item is in the visible area */
       GdkRectangle item_area = item_get_bounding_box(item);
 #if !GTK_CHECK_VERSION(3, 0, 0)
@@ -3201,55 +3204,54 @@ exo_icon_view_set_adjustments (ExoIconView   *icon_view,
                                GtkAdjustment *hadj,
                                GtkAdjustment *vadj)
 {
-  gboolean need_adjust = FALSE;
+    gboolean need_adjust = FALSE;
 
-  if (hadj)
-    _exo_return_if_fail (GTK_IS_ADJUSTMENT (hadj));
-  else
-    hadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-  if (vadj)
-    _exo_return_if_fail (GTK_IS_ADJUSTMENT (vadj));
-  else
-    vadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+    if (hadj)
+        _exo_return_if_fail (GTK_IS_ADJUSTMENT (hadj));
+    else
+        hadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
 
-  if (icon_view->priv->hadjustment && (icon_view->priv->hadjustment != hadj))
+    if (vadj)
+        _exo_return_if_fail (GTK_IS_ADJUSTMENT (vadj));
+    else
+        vadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+    if (icon_view->priv->hadjustment && (icon_view->priv->hadjustment != hadj))
     {
-      g_signal_handlers_disconnect_matched (icon_view->priv->hadjustment, G_SIGNAL_MATCH_DATA,
-                                           0, 0, NULL, NULL, icon_view);
-      g_object_unref (icon_view->priv->hadjustment);
+        g_signal_handlers_disconnect_matched(icon_view->priv->hadjustment, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, icon_view);
+        g_object_unref (icon_view->priv->hadjustment);
     }
 
-  if (icon_view->priv->vadjustment && (icon_view->priv->vadjustment != vadj))
+    if (icon_view->priv->vadjustment && (icon_view->priv->vadjustment != vadj))
     {
-      g_signal_handlers_disconnect_matched (icon_view->priv->vadjustment, G_SIGNAL_MATCH_DATA,
-                                            0, 0, NULL, NULL, icon_view);
-      g_object_unref (icon_view->priv->vadjustment);
+        g_signal_handlers_disconnect_matched(icon_view->priv->vadjustment, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, icon_view);
+        g_object_unref (icon_view->priv->vadjustment);
     }
 
-  if (icon_view->priv->hadjustment != hadj)
+    if (icon_view->priv->hadjustment != hadj)
     {
-      icon_view->priv->hadjustment = hadj;
-      g_object_ref_sink (icon_view->priv->hadjustment);
+        icon_view->priv->hadjustment = hadj;
+        g_object_ref_sink (icon_view->priv->hadjustment);
 
-      g_signal_connect (icon_view->priv->hadjustment, "value-changed",
-                        G_CALLBACK (exo_icon_view_adjustment_changed),
-                        icon_view);
-      need_adjust = TRUE;
+        g_signal_connect(icon_view->priv->hadjustment, "value-changed",
+                         G_CALLBACK (exo_icon_view_adjustment_changed),
+                         icon_view);
+        need_adjust = TRUE;
     }
 
-  if (icon_view->priv->vadjustment != vadj)
+    if (icon_view->priv->vadjustment != vadj)
     {
-      icon_view->priv->vadjustment = vadj;
-      g_object_ref_sink (icon_view->priv->vadjustment);
+        icon_view->priv->vadjustment = vadj;
+        g_object_ref_sink (icon_view->priv->vadjustment);
 
-      g_signal_connect (icon_view->priv->vadjustment, "value-changed",
-                        G_CALLBACK (exo_icon_view_adjustment_changed),
-                        icon_view);
-      need_adjust = TRUE;
+        g_signal_connect (icon_view->priv->vadjustment, "value-changed",
+                          G_CALLBACK (exo_icon_view_adjustment_changed),
+                          icon_view);
+        need_adjust = TRUE;
     }
 
-  if (need_adjust)
-    exo_icon_view_adjustment_changed (NULL, icon_view);
+    if (need_adjust)
+        exo_icon_view_adjustment_changed (NULL, icon_view);
 }
 #else
 static void
@@ -3442,15 +3444,18 @@ static void
 exo_icon_view_adjustment_changed (GtkAdjustment *adjustment,
                                   ExoIconView   *icon_view)
 {
-  if (gtk_widget_get_realized (GTK_WIDGET(icon_view)))
-    {
-      gdk_window_move (icon_view->priv->bin_window, -gtk_adjustment_get_value(icon_view->priv->hadjustment), -gtk_adjustment_get_value(icon_view->priv->vadjustment));
+    if (!gtk_widget_get_realized(GTK_WIDGET(icon_view)))
+        return;
 
-      if (G_UNLIKELY (icon_view->priv->doing_rubberband))
-        exo_icon_view_update_rubberband (GTK_WIDGET (icon_view));
+    gdk_window_move(icon_view->priv->bin_window,
+        -gtk_adjustment_get_value(icon_view->priv->hadjustment),
+        -gtk_adjustment_get_value(icon_view->priv->vadjustment));
 
-      gdk_window_process_updates (icon_view->priv->bin_window, TRUE);
-    }
+    if (icon_view->priv->doing_rubberband)
+        exo_icon_view_update_rubberband(GTK_WIDGET(icon_view));
+
+    if (icon_view->priv->delayed_expose_timeout_id == 0)
+        gdk_window_process_updates(icon_view->priv->bin_window, TRUE);
 }
 
 
@@ -5928,6 +5933,10 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
   /* notify listeners */
   g_object_notify (G_OBJECT (icon_view), "model");
 
+  if (icon_view->priv->hadjustment)
+      gtk_adjustment_set_value(icon_view->priv->hadjustment, 0);
+  if (icon_view->priv->vadjustment)
+      gtk_adjustment_set_value(icon_view->priv->vadjustment, 0);
 }
 
 
