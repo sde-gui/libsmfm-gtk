@@ -4851,77 +4851,10 @@ exo_icon_view_select_all_between (ExoIconView     *icon_view,
 }
 
 
-
-static void
-exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
-                                   gint         count)
+static void move_cursor_to (ExoIconView * icon_view, ExoIconViewItem * item, gint cell)
 {
     ExoIconViewPrivate * priv = icon_view->priv;
-    ExoIconViewItem *item;
-    gboolean         dirty = FALSE;
-    GList           *list;
-    gint             cell = -1;
-    gint             step;
-
-    if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
-        return;
-
-    update_indeces(icon_view);
-
-    if (!priv->cursor_item)
-    {
-        GList * list = priv->items;
-        item = list ? list->data : NULL;
-    }
-    else
-    {
-        item = priv->cursor_item;
-        cell = priv->cursor_cell;
-        step = count > 0 ? 1 : -1;
-        while (item)
-        {
-            cell = find_cell(icon_view, item, cell,
-                             GTK_ORIENTATION_VERTICAL,
-                             step, &count);
-            if (count == 0)
-                break;
-
-            /* determine the list position for the item */
-            list = g_list_find (priv->items, item);
-
-            if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
-            {
-                /* determine the item in the next/prev row */
-                if (step > 0)
-                {
-                    for (list = list->next; list != NULL; list = list->next)
-                    {
-                        if (EXO_ICON_VIEW_ITEM (list->data)->row == item->row + step
-                         && EXO_ICON_VIEW_ITEM (list->data)->col == item->col)
-                            break;
-                    }
-                 }
-                else
-                {
-                    for (list = list->prev; list != NULL; list = list->prev)
-                    {
-                        if (EXO_ICON_VIEW_ITEM (list->data)->row == item->row + step
-                         && EXO_ICON_VIEW_ITEM (list->data)->col == item->col)
-                            break;
-                    }
-                }
-            }
-            else
-            {
-                list = (step > 0) ? list->next : list->prev;
-            }
-
-            /* check if we found a matching item */
-            item = (list != NULL) ? list->data : NULL;
-
-            count = count - step;
-        }
-    }
+    gboolean dirty = FALSE;
 
     if (item == priv->cursor_item)
         gtk_widget_error_bell (GTK_WIDGET (icon_view));
@@ -4956,13 +4889,104 @@ exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
 
 
 
+
+static GList * _find_matching_row_col(GList * list, int row_step, int col_step)
+{
+    g_assert(row_step == 0 || col_step == 0);
+    g_assert(row_step != 0 || col_step != 0);
+
+    int row = EXO_ICON_VIEW_ITEM(list->data)->row + row_step;
+    int col = EXO_ICON_VIEW_ITEM(list->data)->col + col_step;
+
+    int step = (row_step != 0) ? row_step : col_step;
+
+    if (step > 0)
+    {
+        for (list = list->next; list != NULL; list = list->next)
+        {
+            if (EXO_ICON_VIEW_ITEM(list->data)->row == row
+             && EXO_ICON_VIEW_ITEM(list->data)->col == col)
+                break;
+        }
+    }
+    else
+    {
+        for (list = list->prev; list != NULL; list = list->prev)
+        {
+            if (EXO_ICON_VIEW_ITEM(list->data)->row == row
+             && EXO_ICON_VIEW_ITEM(list->data)->col == col)
+                break;
+        }
+    }
+
+    return list;
+}
+
+
+static void
+exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
+                                   gint         count)
+{
+    ExoIconViewPrivate * priv = icon_view->priv;
+    ExoIconViewItem *item;
+    GList           *list;
+    gint             cell = -1;
+    gint             step;
+
+    if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
+        return;
+
+    update_indeces(icon_view);
+
+    if (!priv->cursor_item)
+    {
+        GList * list = priv->items;
+        item = list ? list->data : NULL;
+    }
+    else
+    {
+        item = priv->cursor_item;
+        cell = priv->cursor_cell;
+        step = count > 0 ? 1 : -1;
+        while (item)
+        {
+            cell = find_cell(icon_view, item, cell,
+                             GTK_ORIENTATION_VERTICAL,
+                             step, &count);
+            if (count == 0)
+                break;
+
+            /* determine the list position for the item */
+            list = g_list_find (priv->items, item);
+
+            if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
+            {
+                /* determine the item in the next/prev row */
+                list = _find_matching_row_col(list, step, 0);
+            }
+            else
+            {
+                list = (step > 0) ? list->next : list->prev;
+            }
+
+            /* check if we found a matching item */
+            item = (list != NULL) ? list->data : NULL;
+
+            count = count - step;
+        }
+    }
+
+    move_cursor_to(icon_view, item, cell);
+}
+
+
+
 static void
 exo_icon_view_move_cursor_page_up_down (ExoIconView *icon_view,
                                         gint         count)
 {
     ExoIconViewPrivate * priv = icon_view->priv;
     ExoIconViewItem *item;
-    gboolean dirty = FALSE;
 
     if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
         return;
@@ -4977,35 +5001,7 @@ exo_icon_view_move_cursor_page_up_down (ExoIconView *icon_view,
                                       priv->cursor_item,
                                       count);
 
-    if (item == priv->cursor_item)
-        gtk_widget_error_bell (GTK_WIDGET (icon_view));
-
-    if (!item)
-        return;
-
-    if (priv->ctrl_pressed ||
-       !priv->shift_pressed ||
-       !priv->anchor_item ||
-        priv->selection_mode != GTK_SELECTION_MULTIPLE)
-    {
-        priv->anchor_item = item;
-    }
-
-    exo_icon_view_set_cursor_item (icon_view, item, -1);
-
-    if (!priv->ctrl_pressed &&
-         priv->selection_mode != GTK_SELECTION_NONE)
-    {
-      dirty = exo_icon_view_unselect_all_internal (icon_view);
-      dirty = exo_icon_view_select_all_between (icon_view,
-                                                priv->anchor_item,
-                                                item) || dirty;
-    }
-
-    exo_icon_view_scroll_to_item (icon_view, item);
-
-    if (dirty)
-        g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+    move_cursor_to(icon_view, item, -1);
 }
 
 
@@ -5015,7 +5011,6 @@ exo_icon_view_move_cursor_left_right (ExoIconView *icon_view,
                                       gint         count)
 {
   ExoIconViewItem *item;
-  gboolean         dirty = FALSE;
   GList           *list;
   gint             cell = -1;
   gint             step;
@@ -5060,20 +5055,7 @@ exo_icon_view_move_cursor_left_right (ExoIconView *icon_view,
           else
             {
               /* determine the item in the next/prev row */
-              if (step > 0)
-                {
-                  for (list = list->next; list != NULL; list = list->next)
-                    if (EXO_ICON_VIEW_ITEM (list->data)->col == item->col + step
-                        && EXO_ICON_VIEW_ITEM (list->data)->row == item->row)
-                      break;
-                 }
-              else
-                {
-                  for (list = list->prev; list != NULL; list = list->prev)
-                    if (EXO_ICON_VIEW_ITEM (list->data)->col == item->col + step
-                        && EXO_ICON_VIEW_ITEM (list->data)->row == item->row)
-                      break;
-                }
+              list = _find_matching_row_col(list, 0, step);
             }
 
           /* determine the item for the list position (if any) */
@@ -5083,33 +5065,7 @@ exo_icon_view_move_cursor_left_right (ExoIconView *icon_view,
         }
     }
 
-  if (item == icon_view->priv->cursor_item)
-    gtk_widget_error_bell (GTK_WIDGET (icon_view));
-
-  if (!item)
-    return;
-
-  if (icon_view->priv->ctrl_pressed ||
-      !icon_view->priv->shift_pressed ||
-      !icon_view->priv->anchor_item ||
-      icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
-    icon_view->priv->anchor_item = item;
-
-  exo_icon_view_set_cursor_item (icon_view, item, cell);
-
-  if (!icon_view->priv->ctrl_pressed &&
-      icon_view->priv->selection_mode != GTK_SELECTION_NONE)
-    {
-      dirty = exo_icon_view_unselect_all_internal (icon_view);
-      dirty = exo_icon_view_select_all_between (icon_view,
-                                                icon_view->priv->anchor_item,
-                                                item) || dirty;
-    }
-
-  exo_icon_view_scroll_to_item (icon_view, item);
-
-  if (dirty)
-    g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+    move_cursor_to(icon_view, item, cell);
 }
 
 
@@ -5119,7 +5075,6 @@ exo_icon_view_move_cursor_start_end (ExoIconView *icon_view,
                                      gint         count)
 {
   ExoIconViewItem *item;
-  gboolean         dirty = FALSE;
   GList           *lp;
 
   if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
@@ -5128,33 +5083,7 @@ exo_icon_view_move_cursor_start_end (ExoIconView *icon_view,
   lp = (count < 0) ? icon_view->priv->items : g_list_last (icon_view->priv->items);
   item = lp ? EXO_ICON_VIEW_ITEM (lp->data) : NULL;
 
-  if (item == icon_view->priv->cursor_item)
-    gtk_widget_error_bell (GTK_WIDGET (icon_view));
-
-  if (G_UNLIKELY (item == NULL))
-    return;
-
-  if (icon_view->priv->ctrl_pressed ||
-      !icon_view->priv->shift_pressed ||
-      !icon_view->priv->anchor_item ||
-      icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
-    icon_view->priv->anchor_item = item;
-
-  exo_icon_view_set_cursor_item (icon_view, item, -1);
-
-  if (!icon_view->priv->ctrl_pressed &&
-      icon_view->priv->selection_mode != GTK_SELECTION_NONE)
-    {
-      dirty = exo_icon_view_unselect_all_internal (icon_view);
-      dirty = exo_icon_view_select_all_between (icon_view,
-                                                icon_view->priv->anchor_item,
-                                                item) || dirty;
-    }
-
-  exo_icon_view_scroll_to_item (icon_view, item);
-
-  if (G_UNLIKELY (dirty))
-    g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+  move_cursor_to(icon_view, item, -1);
 }
 
 
