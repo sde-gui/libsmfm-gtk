@@ -87,6 +87,8 @@ typedef struct _ModeSettings
 
     gboolean horizontal_orientation;
     ExoIconViewLayoutMode icon_layout_mode;
+
+    gboolean force_thumbnails;
 } ModeSettings;
 
 ModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
@@ -644,7 +646,10 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
     g_object_set((GObject*)renderer_pixbuf, "follow-state", TRUE, NULL);
     gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf, TRUE);
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf,
-        "pixbuf", FM_FOLDER_MODEL_COL_ICON);
+        "pixbuf", 
+            fv->mode_settings.force_thumbnails ?
+            FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL :
+            FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL);
     gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(fv->view), renderer_pixbuf,
         "info", FM_FOLDER_MODEL_COL_INFO);
 
@@ -954,8 +959,11 @@ static GtkTreeViewColumn* create_list_view_column(FmStandardView* fv,
         /* special handling for Name column */
         gtk_tree_view_column_pack_start(col, GTK_CELL_RENDERER(fv->renderer_pixbuf), FALSE);
         gtk_tree_view_column_set_attributes(col, GTK_CELL_RENDERER(fv->renderer_pixbuf),
-                                            "pixbuf", FM_FOLDER_MODEL_COL_ICON,
-                                            "info", FM_FOLDER_MODEL_COL_INFO, NULL);
+            "pixbuf",
+                fv->mode_settings.force_thumbnails ?
+                FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL :
+                FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL,
+            "info", FM_FOLDER_MODEL_COL_INFO, NULL);
         g_object_set(render, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
         gtk_tree_view_column_set_expand(col, TRUE);
         if(set->width <= 0)
@@ -1229,6 +1237,7 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
     mode_settings[FM_FV_ICON_VIEW].padding_min = 2;
     mode_settings[FM_FV_ICON_VIEW].padding_mult = 0.06;
     mode_settings[FM_FV_ICON_VIEW].cell_spacing = 1;
+    mode_settings[FM_FV_ICON_VIEW].force_thumbnails = FALSE;
 
     mode_settings[FM_FV_THUMBNAIL_VIEW].type = FmViewType_Icon;
     mode_settings[FM_FV_THUMBNAIL_VIEW].horizontal_orientation = FALSE;
@@ -1244,6 +1253,7 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
     mode_settings[FM_FV_THUMBNAIL_VIEW].padding_min = 2;
     mode_settings[FM_FV_THUMBNAIL_VIEW].padding_mult = 0.06;
     mode_settings[FM_FV_THUMBNAIL_VIEW].cell_spacing = 1;
+    mode_settings[FM_FV_THUMBNAIL_VIEW].force_thumbnails = TRUE;
 
     mode_settings[FM_FV_COMPACT_VIEW].type = FmViewType_Icon;
     mode_settings[FM_FV_COMPACT_VIEW].horizontal_orientation = TRUE;
@@ -1258,9 +1268,10 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
     mode_settings[FM_FV_COMPACT_VIEW].padding_min = 0;
     mode_settings[FM_FV_COMPACT_VIEW].padding_mult = 0.06;
     mode_settings[FM_FV_COMPACT_VIEW].cell_spacing = 1;
+    mode_settings[FM_FV_COMPACT_VIEW].force_thumbnails = FALSE;
 
     mode_settings[FM_FV_LIST_VIEW].type = FmViewType_Tree;
-
+    mode_settings[FM_FV_LIST_VIEW].force_thumbnails = FALSE;
 
     fv->mode = mode;
 

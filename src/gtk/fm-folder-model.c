@@ -205,7 +205,9 @@ static FmFolderModelInfo column_infos_raw[] = {
     { FM_FOLDER_MODEL_COL_DIRNAME, 0, "dirname", N_("Location"), TRUE },
     /* columns used internally */
     { FM_FOLDER_MODEL_COL_INFO, 0, "info", NULL, TRUE },
-    { FM_FOLDER_MODEL_COL_ICON, 0, "icon", NULL, FALSE },
+    { FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL, 0, "icon", NULL, FALSE },
+    { FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL, 0, "icon", NULL, FALSE },
+    { FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL, 0, "icon", NULL, FALSE },
     { FM_FOLDER_MODEL_COL_GICON, 0, "gicon", NULL, FALSE },
     { FM_FOLDER_MODEL_COL_COLOR, 0, "color", NULL, FALSE },
     { FM_FOLDER_MODEL_COL_COLOR_SET, 0, "color-set", NULL, FALSE }
@@ -335,7 +337,9 @@ static void fm_folder_model_tree_model_init(GtkTreeModelIface *iface)
 
     /* columns used internally */
     column_infos[FM_FOLDER_MODEL_COL_INFO]->type= G_TYPE_POINTER;
-    column_infos[FM_FOLDER_MODEL_COL_ICON]->type= GDK_TYPE_PIXBUF;
+    column_infos[FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL]->type= GDK_TYPE_PIXBUF;
+    column_infos[FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL]->type= GDK_TYPE_PIXBUF;
+    column_infos[FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL]->type= GDK_TYPE_PIXBUF;
     column_infos[FM_FOLDER_MODEL_COL_GICON]->type= G_TYPE_ICON;
 #if GTK_CHECK_VERSION(3, 0, 0)
     column_infos[FM_FOLDER_MODEL_COL_COLOR]->type= GDK_TYPE_RGBA;
@@ -733,7 +737,9 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
         if(G_LIKELY(icon))
             g_value_set_object(value, icon->gicon);
         break;
-    case FM_FOLDER_MODEL_COL_ICON:
+    case FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL:
+    case FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL:
+    case FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL:
     {
         if(G_UNLIKELY(!item->icon))
         {
@@ -744,9 +750,17 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
         }
         g_value_set_object(value, item->icon);
 
+        gboolean show_thumbnail;
+        if (column == FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL)
+            show_thumbnail = FALSE;
+        else if (column == FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL)
+            show_thumbnail = TRUE;
+        else
+            show_thumbnail = fm_config->show_thumbnail;
+
         /* if we want to show a thumbnail */
         /* if we're on local filesystem or thumbnailing for remote files is allowed */
-        if(fm_config->show_thumbnail && (fm_path_is_native_or_trash(fm_file_info_get_path(info)) || !fm_config->thumbnail_local))
+        if (show_thumbnail && (fm_path_is_native_or_trash(fm_file_info_get_path(info)) || !fm_config->thumbnail_local))
         {
             if(!item->is_thumbnail && !item->thumbnail_failed && !item->thumbnail_loading)
             {
