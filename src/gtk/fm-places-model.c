@@ -103,6 +103,15 @@ struct _FmPlacesModelClass
 
 static void create_trash_item(FmPlacesModel* model);
 
+
+static GdkPixbuf* pixbuf_for_pane_icon(FmIcon* icon)
+{
+    int icon_size = fm_config->pane_icon_size;
+    if (icon_size < 12)
+        icon_size = 12;
+    return fm_pixbuf_from_icon(icon, icon_size);
+}
+
 static void place_item_free(FmPlacesItem* item)
 {
     switch(item->type)
@@ -186,7 +195,7 @@ static void on_file_info_job_finished(FmFileInfoJob* job, gpointer user_data)
                             {
                                 fm_icon_unref(item->icon);
                                 item->icon = fm_icon_ref(icon);
-                                pix = fm_pixbuf_from_icon(icon, fm_config->pane_icon_size);
+                                pix = pixbuf_for_pane_icon(icon);
                                 gtk_list_store_set(GTK_LIST_STORE(model), &it,
                                                    FM_PLACES_MODEL_COL_ICON, pix, -1);
                             }
@@ -264,7 +273,7 @@ static void update_volume_or_mount(FmPlacesModel* model, FmPlacesItem* item, Gtk
         }
     }
 
-    pix = fm_pixbuf_from_icon(item->icon, fm_config->pane_icon_size);
+    pix = pixbuf_for_pane_icon(item->icon);
     gtk_list_store_set(GTK_LIST_STORE(model), it, FM_PLACES_MODEL_COL_ICON, pix, FM_PLACES_MODEL_COL_LABEL, name, -1);
     g_object_unref(pix);
     g_free(name);
@@ -322,7 +331,7 @@ static FmPlacesItem* new_path_item(GtkListStore* model, GtkTreeIter* it,
     } while(gtk_tree_model_iter_next(GTK_TREE_MODEL(model), &next_it));
     gtk_list_store_append(model, it);
 _added:
-    pix = fm_pixbuf_from_icon(item->icon, fm_config->pane_icon_size);
+    pix = pixbuf_for_pane_icon(item->icon);
     gtk_list_store_set(model, it,
                        FM_PLACES_MODEL_COL_INFO, item,
                        FM_PLACES_MODEL_COL_LABEL, label,
@@ -537,7 +546,7 @@ static void add_bookmarks(FmPlacesModel* model, FmFileInfoJob* job)
     GList *bms, *l;
     FmIcon* icon = fm_icon_from_name("folder");
     FmIcon* remote_icon = NULL;
-    GdkPixbuf* folder_pix = fm_pixbuf_from_icon(icon, fm_config->pane_icon_size);
+    GdkPixbuf* folder_pix = pixbuf_for_pane_icon(icon);
     GdkPixbuf* remote_pix = NULL;
     bms = fm_bookmarks_get_all(model->bookmarks);
     for(l=bms;l;l=l->next)
@@ -560,7 +569,7 @@ static void add_bookmarks(FmPlacesModel* model, FmFileInfoJob* job)
             if(G_UNLIKELY(!remote_icon))
             {
                 remote_icon = fm_icon_from_name("folder-remote");
-                remote_pix = fm_pixbuf_from_icon(remote_icon, fm_config->pane_icon_size);
+                remote_pix = pixbuf_for_pane_icon(remote_icon);
             }
             item->icon = fm_icon_ref(remote_icon);
             pix = remote_pix;
@@ -635,7 +644,7 @@ static gboolean update_trash_item(gpointer user_data)
                 fm_icon_unref(item->icon);
             item->icon = icon;
             /* update the icon */
-            pix = fm_pixbuf_from_icon(item->icon, fm_config->pane_icon_size);
+            pix = pixbuf_for_pane_icon(item->icon);
             gtk_list_store_set(GTK_LIST_STORE(model), &it, FM_PLACES_MODEL_COL_ICON, pix, -1);
             g_object_unref(pix);
             gtk_tree_path_free(tp);
@@ -663,7 +672,7 @@ static void update_icons(FmPlacesModel* model)
 
     /* update the eject icon */
     icon = fm_icon_from_name("media-eject");
-    pix = fm_pixbuf_from_icon(icon, fm_config->pane_icon_size);
+    pix = pixbuf_for_pane_icon(icon);
     fm_icon_unref(icon);
     if(model->eject_icon)
         g_object_unref(model->eject_icon);
@@ -676,7 +685,7 @@ static void update_icons(FmPlacesModel* model)
         gtk_tree_model_get(GTK_TREE_MODEL(model), &it, FM_PLACES_MODEL_COL_INFO, &item, -1);
         if(item) /* separator item has all columns NULL */
         {
-            pix = fm_pixbuf_from_icon(item->icon, fm_config->pane_icon_size);
+            pix = pixbuf_for_pane_icon(item->icon);
             gtk_list_store_set(GTK_LIST_STORE(model), &it, FM_PLACES_MODEL_COL_ICON, pix, -1);
             g_object_unref(pix);
         }
@@ -887,7 +896,7 @@ static void fm_places_model_init(FmPlacesModel *self)
     self->pane_icon_size_change_handler = g_signal_connect(fm_config, "changed::pane_icon_size",
                                              G_CALLBACK(on_pane_icon_size_changed), self);
     icon = fm_icon_from_name("media-eject");
-    self->eject_icon = fm_pixbuf_from_icon(icon, fm_config->pane_icon_size);
+    self->eject_icon = pixbuf_for_pane_icon(icon);
     fm_icon_unref(icon);
 
     if(fm_config->places_home)

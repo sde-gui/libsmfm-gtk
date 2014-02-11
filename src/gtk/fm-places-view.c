@@ -155,10 +155,20 @@ static gboolean sep_func( GtkTreeModel* model, GtkTreeIter* it, gpointer data )
     return fm_places_model_iter_is_separator(FM_PLACES_MODEL(model), it);
 }
 
+static void apply_icon_size(FmCellRendererPixbuf* renderer, int icon_size)
+{
+    g_object_set(G_OBJECT(renderer), "visible", icon_size > 0, NULL);
+
+    if (icon_size < 1)
+        icon_size = 1;
+
+    fm_cell_renderer_pixbuf_set_fixed_size(renderer, icon_size, icon_size);
+}
+
 static void on_renderer_icon_size_changed(FmConfig* cfg, gpointer user_data)
 {
-    FmCellRendererPixbuf* render = FM_CELL_RENDERER_PIXBUF(user_data);
-    fm_cell_renderer_pixbuf_set_fixed_size(render, fm_config->pane_icon_size, fm_config->pane_icon_size);
+    FmCellRendererPixbuf* renderer = FM_CELL_RENDERER_PIXBUF(user_data);
+    apply_icon_size(renderer, fm_config->pane_icon_size);
 }
 
 static void on_cell_renderer_pixbuf_destroy(gpointer user_data, GObject* render)
@@ -472,7 +482,8 @@ static void fm_places_view_init(FmPlacesView *self)
     renderer = (GtkCellRenderer*)fm_cell_renderer_pixbuf_new();
     handler = g_signal_connect(fm_config, "changed::pane_icon_size", G_CALLBACK(on_renderer_icon_size_changed), renderer);
     g_object_weak_ref(G_OBJECT(renderer), on_cell_renderer_pixbuf_destroy, GUINT_TO_POINTER(handler));
-    fm_cell_renderer_pixbuf_set_fixed_size((FmCellRendererPixbuf*)renderer, fm_config->pane_icon_size, fm_config->pane_icon_size);
+
+    apply_icon_size((FmCellRendererPixbuf *) renderer, fm_config->pane_icon_size);
 
     gtk_tree_view_column_pack_start( col, renderer, FALSE );
     gtk_tree_view_column_set_attributes( col, renderer,
