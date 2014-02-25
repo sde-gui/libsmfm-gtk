@@ -28,6 +28,12 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <glib/gi18n-lib.h>
+
 #include "fm-gtk.h"
 
 // temporary definition, until FmModule is implemented
@@ -47,6 +53,8 @@ gboolean fm_gtk_init(FmConfig* config)
 {
     if (!fm_init(config))
         return FALSE;
+
+    bindtextdomain(GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
 
     _fm_icon_pixbuf_init();
     _fm_thumbnail_init();
