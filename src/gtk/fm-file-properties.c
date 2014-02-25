@@ -141,6 +141,8 @@ struct _FmFilePropData
     /* General page */
     GtkTable* general_table;
     GtkImage* icon;
+    GtkLabel* file_label;
+    GtkLabel* file;
     GtkEntry* name;
     GtkLabel* dir;
     GtkLabel* target;
@@ -840,8 +842,10 @@ static void update_ui(FmFilePropData* data)
             g_free(s);
         }
 
-        if(icon)
+        if (icon)
+        {
             gtk_image_set_from_gicon(img, icon, GTK_ICON_SIZE_DIALOG);
+        }
 
         if( data->single_file && fm_file_info_is_symlink(data->fi) )
         {
@@ -886,13 +890,26 @@ static void update_ui(FmFilePropData* data)
         data->open_with_label = NULL;
     }
 
+    gtk_widget_hide(GTK_WIDGET(data->file_label));
+    gtk_widget_hide(GTK_WIDGET(data->file));
+
     if( data->single_file )
     {
-        gtk_entry_set_text(data->name, fm_file_info_get_disp_name(data->fi));
+        const char * disp_name = fm_file_info_get_disp_name(data->fi);
+        const char * name = fm_file_info_get_name(data->fi);
+
+        if (strcmp(disp_name, name) != 0)
+        {
+            gtk_widget_show(GTK_WIDGET(data->file_label));
+            gtk_widget_show(GTK_WIDGET(data->file));
+            gtk_label_set_text(data->file, name);
+        }
+
+        gtk_entry_set_text(data->name, disp_name);
+
         /* FIXME: check if text fits in line */
-        if(strlen(fm_file_info_get_disp_name(data->fi)) > 16)
-            gtk_widget_set_tooltip_text(GTK_WIDGET(data->name),
-                                        fm_file_info_get_disp_name(data->fi));
+        if (strlen(disp_name) > 16)
+            gtk_widget_set_tooltip_text(GTK_WIDGET(data->name), disp_name);
 
         /* FIXME: changing file name isn't implemented yet, disable entry */
         gtk_widget_set_can_focus(GTK_WIDGET(data->name), FALSE);
@@ -1017,6 +1034,8 @@ GtkDialog* fm_file_properties_widget_new(FmFileInfoList* files, gboolean topleve
 
     GET_WIDGET(GTK_TABLE,general_table);
     GET_WIDGET(GTK_IMAGE,icon);
+    GET_WIDGET(GTK_LABEL,file);
+    GET_WIDGET(GTK_LABEL,file_label);
     GET_WIDGET(GTK_ENTRY,name);
     GET_WIDGET(GTK_LABEL,dir);
     GET_WIDGET(GTK_LABEL,target);

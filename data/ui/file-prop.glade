@@ -22,7 +22,6 @@
             <child>
               <object class="GtkButton" id="cancel">
                 <property name="label">gtk-cancel</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
@@ -39,7 +38,6 @@
             <child>
               <object class="GtkButton" id="ok">
                 <property name="label">gtk-ok</property>
-                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
@@ -73,13 +71,14 @@
                 <property name="can_focus">False</property>
                 <property name="top_padding">6</property>
                 <property name="bottom_padding">6</property>
-                <property name="left_padding">12</property>
+                <property name="left_padding">6</property>
+                <property name="right_padding">6</property>
                 <child>
                   <object class="GtkTable" id="general_table">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="border_width">4</property>
-                    <property name="n_rows">10</property>
+                    <property name="n_rows">13</property>
                     <property name="n_columns">3</property>
                     <property name="column_spacing">12</property>
                     <property name="row_spacing">6</property>
@@ -94,21 +93,24 @@
                             <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
                             <property name="has_tooltip">True</property>
                             <property name="tooltip_text" translatable="yes">Icon of the file in folder view</property>
+                            <property name="xalign">0</property>
                             <property name="stock">gtk-missing-image</property>
                             <property name="icon-size">6</property>
                           </object>
                         </child>
                       </object>
                       <packing>
-                        <property name="bottom_attach">2</property>
+                        <property name="bottom_attach">3</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
-                        <property name="y_options"/>
+                        <property name="y_options">GTK_SHRINK | GTK_FILL</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="file_label">
                         <property name="can_focus">False</property>
                         <property name="xalign">1</property>
+                        <property name="label" translatable="yes">&lt;b&gt;File:&lt;/b&gt;</property>
+                        <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
@@ -171,12 +173,13 @@
                       <object class="GtkLabel" id="label20">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Location:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
+                        <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
                         <property name="top_attach">2</property>
                         <property name="bottom_attach">3</property>
@@ -205,7 +208,7 @@
                       <object class="GtkLabel" id="target_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Target file:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
@@ -239,15 +242,15 @@
                       <object class="GtkLabel" id="label4">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
-                        <property name="label" translatable="yes">&lt;b&gt;File Type:&lt;/b&gt;</property>
+                        <property name="xalign">1</property>
+                        <property name="label" translatable="yes">&lt;b&gt;Type:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">4</property>
-                        <property name="bottom_attach">5</property>
+                        <property name="top_attach">5</property>
+                        <property name="bottom_attach">6</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -263,8 +266,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">4</property>
-                        <property name="bottom_attach">5</property>
+                        <property name="top_attach">5</property>
+                        <property name="bottom_attach">6</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -273,7 +276,7 @@
                       <object class="GtkLabel" id="open_with_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Open _with:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
@@ -281,8 +284,8 @@
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">5</property>
-                        <property name="bottom_attach">6</property>
+                        <property name="top_attach">6</property>
+                        <property name="bottom_attach">7</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -296,8 +299,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">5</property>
-                        <property name="bottom_attach">6</property>
+                        <property name="top_attach">6</property>
+                        <property name="bottom_attach">7</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -306,15 +309,15 @@
                       <object class="GtkLabel" id="total_size_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Total Size of Files:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">6</property>
-                        <property name="bottom_attach">7</property>
+                        <property name="top_attach">8</property>
+                        <property name="bottom_attach">9</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -329,8 +332,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">6</property>
-                        <property name="bottom_attach">7</property>
+                        <property name="top_attach">8</property>
+                        <property name="bottom_attach">9</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -339,15 +342,15 @@
                       <object class="GtkLabel" id="size_on_disk_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Size on Disk:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">7</property>
-                        <property name="bottom_attach">8</property>
+                        <property name="top_attach">9</property>
+                        <property name="bottom_attach">10</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -362,8 +365,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">7</property>
-                        <property name="bottom_attach">8</property>
+                        <property name="top_attach">9</property>
+                        <property name="bottom_attach">10</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -372,15 +375,15 @@
                       <object class="GtkLabel" id="mtime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Last Modification:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">8</property>
-                        <property name="bottom_attach">9</property>
+                        <property name="top_attach">11</property>
+                        <property name="bottom_attach">12</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -395,8 +398,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">8</property>
-                        <property name="bottom_attach">9</property>
+                        <property name="top_attach">11</property>
+                        <property name="bottom_attach">12</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -405,15 +408,15 @@
                       <object class="GtkLabel" id="atime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Last Access:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">9</property>
-                        <property name="bottom_attach">10</property>
+                        <property name="top_attach">12</property>
+                        <property name="bottom_attach">13</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -423,13 +426,56 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="xalign">0</property>
+                        <property name="selectable">True</property>
                       </object>
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">9</property>
-                        <property name="bottom_attach">10</property>
+                        <property name="top_attach">12</property>
+                        <property name="bottom_attach">13</property>
                         <property name="y_options"/>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label5">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes"> </property>
+                      </object>
+                      <packing>
+                        <property name="right_attach">3</property>
+                        <property name="top_attach">7</property>
+                        <property name="bottom_attach">8</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label7">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes"> </property>
+                      </object>
+                      <packing>
+                        <property name="right_attach">3</property>
+                        <property name="top_attach">10</property>
+                        <property name="bottom_attach">11</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label10">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes"> </property>
+                      </object>
+                      <packing>
+                        <property name="right_attach">3</property>
+                        <property name="top_attach">4</property>
+                        <property name="bottom_attach">5</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
                       </packing>
                     </child>
                   </object>
