@@ -51,6 +51,7 @@ libsmfm_gtk2_SOURCES = \
 	gtk/fm-folder-view.c \
 	gtk/fm-standard-view.c \
 	gtk/fm-folder-model.c \
+	gtk/fm-folder-model-column.c \
 	gtk/fm-places-view.c \
 	gtk/fm-places-model.c \
 	gtk/fm-dir-tree-view.c \
@@ -86,6 +87,7 @@ libsmfmgtkinclude_HEADERS = \
 	gtk/fm-folder-view.h \
 	gtk/fm-standard-view.h \
 	gtk/fm-folder-model.h \
+	gtk/fm-folder-model-column.h \
 	gtk/fm-places-view.h \
 	gtk/fm-places-model.h \
 	gtk/fm-dir-tree-view.h \
