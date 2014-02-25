@@ -55,6 +55,55 @@ static void destroy_pixbufs(gpointer data)
     g_slist_free(pixs);
 }
 
+
+static gint * _fm_icon_get_sizes(FmIcon * icon)
+{
+    gint * sizes = NULL;
+
+    if (icon && icon->gicon && G_IS_THEMED_ICON(icon->gicon))
+    {
+        const gchar * const * names = g_themed_icon_get_names(G_THEMED_ICON(icon->gicon));
+
+        size_t sizes_size = 32;
+        sizes = g_malloc0(sizeof(gint) * sizes_size);
+
+        size_t i;
+        for (i = 0; names[i]; i++)
+        {
+            const gchar * icon_name = names[i];
+            gint * sizes_for_name = gtk_icon_theme_get_icon_sizes(gtk_icon_theme_get_default(), icon_name);
+
+            size_t j1, j2;
+            for (j1 = 0; sizes_for_name[j1]; j1++)
+            {
+                for (j2 = 0; j2 < sizes_size - 1; j2++)
+                {
+                    if (sizes[j2] == 0)
+                        sizes[j2] = sizes_for_name[j1];
+
+                    if (sizes[j2] == sizes_for_name[j1])
+                        break;
+                }
+            }
+
+            g_free(sizes_for_name);
+        }
+    }
+
+    if (sizes && *sizes)
+        return sizes;
+
+    sizes = g_realloc(sizes, sizeof(gint) * 4);
+    sizes[0] = 16;
+    sizes[1] = 32;
+    sizes[2] = 48;
+    sizes[3] = 0;
+
+    return sizes;
+}
+
+
+
 /**
  * fm_pixbuf_from_icon
  * @icon: icon descriptor
@@ -146,6 +195,38 @@ GdkPixbuf* fm_pixbuf_from_icon(FmIcon* icon, int size)
 
     return pix;
 }
+
+/**
+ * fm_pixbuf_list_from_icon
+ * @icon: icon descriptor
+ *
+ * Creates a list of #GdkPixbuf's of different sizes from an icon descriptor.
+ *
+ * Returns: (transfer full): an list of #GdkPixbuf's.
+ *
+ * Since: 1.5.0
+ */
+GList * fm_pixbuf_list_from_icon(FmIcon * icon)
+{
+    GList * list = NULL;
+    gint * sizes = _fm_icon_get_sizes(icon);
+
+    size_t i;
+    for (i = 0; sizes[i]; i++)
+    {
+        gint size = sizes[i];
+        if (size < 0)
+            size = 48;
+        GdkPixbuf * pixbuf = fm_pixbuf_from_icon(icon, size);
+        if (pixbuf)
+            list = g_list_append(list, pixbuf);
+    }
+
+    g_free(sizes);
+
+    return list;
+}
+
 
 static void on_icon_theme_changed(GtkIconTheme* theme, gpointer user_data)
 {

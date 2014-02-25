@@ -32,6 +32,7 @@ void _fm_icon_pixbuf_init();
 void _fm_icon_pixbuf_finalize();
 
 GdkPixbuf* fm_pixbuf_from_icon(FmIcon* icon, int size);
+GList * fm_pixbuf_list_from_icon(FmIcon * icon);
 
 G_END_DECLS
 

@@ -82,6 +82,7 @@
 
 #include "fm-progress-dlg.h"
 #include "fm-gtk-utils.h"
+#include "fm-icon-pixbuf.h"
 
 #include "fm-app-chooser-combo-box.h"
 
@@ -137,6 +138,9 @@ typedef struct _FmFilePropData FmFilePropData;
 struct _FmFilePropData
 {
     GtkDialog* dlg;
+
+    guint theme_changed_handler;
+    FmIcon * fi_icon;
 
     /* General page */
     GtkTable* general_table;
@@ -249,6 +253,15 @@ static void on_finished(FmDeepCountJob* job, FmFilePropData* data)
 
 static void fm_file_prop_data_free(FmFilePropData* data)
 {
+    if (data->theme_changed_handler)
+    {
+        GtkIconTheme* theme = gtk_icon_theme_get_default();
+        g_signal_handler_disconnect(theme, data->theme_changed_handler);
+    }
+
+    if (data->fi_icon)
+        fm_icon_unref(data->fi_icon);
+
     g_free(data->orig_owner);
     g_free(data->orig_group);
 
@@ -807,34 +820,42 @@ static void set_time_interval(GtkLabel * label, time_t min_time, time_t max_time
 
 }
 
+static void on_icon_theme_changed(GtkIconTheme* theme, gpointer user_data)
+{
+    FmFilePropData * data = (FmFilePropData *) user_data;
+
+    if (data->fi_icon)
+    {
+        GList * list = fm_pixbuf_list_from_icon(data->fi_icon);
+        gtk_window_set_icon_list(GTK_WINDOW(data->dlg), list);
+        g_list_free_full(list, g_object_unref);
+    }
+}
+
+
 static void update_ui(FmFilePropData* data)
 {
     GtkImage* img = data->icon;
 
     if( data->single_type ) /* all files are of the same mime-type */
     {
-        GIcon* icon = NULL;
         /* FIXME: handle custom icons for some files */
         FmFilePropExt* ext;
 
         /* FIXME: display special property pages for special files or
          * some specified mime-types. */
-        if( data->single_file ) /* only one file is selected. */
+        if (data->single_file) /* only one file is selected. */
         {
             FmFileInfo* fi = fm_file_info_list_peek_head(data->files);
-            FmIcon* fi_icon = fm_file_info_get_icon(fi);
-            if(fi_icon)
-                icon = fi_icon->gicon;
+            if (!data->fi_icon)
+                data->fi_icon = fm_icon_ref(fm_file_info_get_icon(fi));
         }
 
-        if(data->mime_type)
+        if (data->mime_type)
         {
-            if(!icon)
-            {
-                FmIcon* ficon = fm_mime_type_get_icon(data->mime_type);
-                if(ficon)
-                    icon = ficon->gicon;
-            }
+            if (!data->fi_icon)
+                data->fi_icon = fm_icon_ref(fm_mime_type_get_icon(data->mime_type));
+
             gchar * s = g_strdup_printf(_("%s (%s)"),
                 fm_mime_type_get_desc(data->mime_type),
                 fm_mime_type_get_type(data->mime_type));
@@ -842,9 +863,17 @@ static void update_ui(FmFilePropData* data)
             g_free(s);
         }
 
-        if (icon)
+        if (data->fi_icon)
         {
-            gtk_image_set_from_gicon(img, icon, GTK_ICON_SIZE_DIALOG);
+            if (data->fi_icon->gicon)
+                gtk_image_set_from_gicon(img, data->fi_icon->gicon, GTK_ICON_SIZE_DIALOG);
+
+            GList * list = fm_pixbuf_list_from_icon(data->fi_icon);
+            gtk_window_set_icon_list(GTK_WINDOW(data->dlg), list);
+            g_list_free_full(list, g_object_unref);
+
+            GtkIconTheme * theme = gtk_icon_theme_get_default();
+            data->theme_changed_handler = g_signal_connect(theme, "changed", G_CALLBACK(on_icon_theme_changed), data);
         }
 
         if( data->single_file && fm_file_info_is_symlink(data->fi) )
@@ -877,6 +906,8 @@ static void update_ui(FmFilePropData* data)
     else
     {
         gtk_image_set_from_stock(img, GTK_STOCK_DND_MULTIPLE, GTK_ICON_SIZE_DIALOG);
+        gtk_window_set_icon_name(GTK_WINDOW(data->dlg), GTK_STOCK_DND_MULTIPLE);
+
         gtk_widget_set_sensitive(GTK_WIDGET(data->name), FALSE);
 
         gtk_label_set_text(data->type, _("Files of different types"));
