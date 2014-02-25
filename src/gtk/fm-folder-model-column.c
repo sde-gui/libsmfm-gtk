@@ -28,25 +28,13 @@
 #include <config.h>
 #endif
 
-#include <libsmfm-core/fm-config.h>
-#include "fm-folder-model.h"
-#include <libsmfm-core/fm-file-info.h>
-#include "fm-icon-pixbuf.h"
-#include "fm-thumbnail.h"
-#include "fm-gtk-marshal.h"
-
 #include "glib-compat.h"
-
-#include <gdk/gdk.h>
 #include <glib/gi18n-lib.h>
-
-#include <string.h>
-#include <gio/gio.h>
-
+#include "fm-folder-model.h"
 #include "fm-folder-model-column-private.h"
 
 guint column_infos_n = 0;
-FmFolderModelInfo** column_infos = NULL;
+FmFolderModelInfo ** column_infos = NULL;
 
 static FmFolderModelInfo column_infos_raw[] = {
      /* columns visible to the users */

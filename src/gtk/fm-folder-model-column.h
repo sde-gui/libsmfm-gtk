@@ -119,6 +119,8 @@ struct _FmFolderModelColumnInit
 
 FmFolderModelCol fm_folder_model_add_custom_column(const char* name, FmFolderModelColumnInit* init);
 
+void _fm_folder_model_col_init(void);
+
 G_END_DECLS
 
 #endif

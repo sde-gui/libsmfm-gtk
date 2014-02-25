@@ -45,11 +45,12 @@ void _fm_dentry_properties_init(void);
  */
 gboolean fm_gtk_init(FmConfig* config)
 {
-    if( G_UNLIKELY(!fm_init(config)) )
+    if (!fm_init(config))
         return FALSE;
 
     _fm_icon_pixbuf_init();
     _fm_thumbnail_init();
+    _fm_folder_model_col_init();
     _fm_dentry_properties_init(); // temporary
 
     return TRUE;

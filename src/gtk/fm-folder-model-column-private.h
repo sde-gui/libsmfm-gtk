@@ -13,5 +13,3 @@ typedef struct
 
 extern guint column_infos_n;
 extern FmFolderModelInfo ** column_infos;
-
-void _fm_folder_model_col_init(void);
