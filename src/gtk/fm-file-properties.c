@@ -202,7 +202,7 @@ static void label_set_size(GtkLabel * label, long long unsigned int size)
     fm_file_size_to_str(size_str1, sizeof(size_str1), size, fm_config->si_unit);
 
     gchar * size_str2 = g_strdup_printf("%'llu %s", size,
-        dngettext(GETTEXT_PACKAGE, "byte", "bytes", size));
+        g_dngettext(GETTEXT_PACKAGE, "byte", "bytes", size));
 
     if (strcmp(size_str1, size_str2) == 0)
     {
@@ -945,11 +945,25 @@ static void update_ui(FmFilePropData* data)
         /* FIXME: changing file name isn't implemented yet, disable entry */
         gtk_widget_set_can_focus(GTK_WIDGET(data->name), FALSE);
         gtk_editable_set_editable(GTK_EDITABLE(data->name), FALSE);
+
+        gchar * dialog_title = g_strdup_printf(_("%s - Properties"), disp_name);
+        gtk_window_set_title(GTK_WINDOW(data->dlg), dialog_title);
+        g_free(dialog_title);
     }
     else
     {
         gtk_entry_set_text(data->name, _("Multiple Files"));
         gtk_widget_set_sensitive(GTK_WIDGET(data->name), FALSE);
+
+
+        size_t files_count = fm_file_info_list_get_length(data->files);
+        gchar * dialog_title = g_strdup_printf(
+            g_dngettext(GETTEXT_PACKAGE,
+                "Properties - %u items",
+                "Properties - %u items", files_count),
+            files_count);
+        gtk_window_set_title(GTK_WINDOW(data->dlg), dialog_title);
+        g_free(dialog_title);
     }
 
     FmPath * common_parent = fm_path_get_parent(fm_file_info_get_path(data->fi));
