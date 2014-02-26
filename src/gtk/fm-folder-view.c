@@ -1537,6 +1537,7 @@ void fm_folder_view_set_active(FmFolderView* fv, gboolean set)
     }
 }
 
+
 /**
  * fm_folder_view_item_clicked
  * @fv: the folder view widget
@@ -1564,69 +1565,47 @@ void fm_folder_view_set_active(FmFolderView* fv, gboolean set)
 void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
                                  FmFolderViewClickType type)
 {
-    FmFolderViewInterface* iface;
-    GtkTreeModel* model;
-    FmFileInfo* fi;
-    const char* target;
-    GtkMenu *popup;
-    GtkWindow *win;
-    FmFolderViewUpdatePopup update_popup = NULL;
-    FmLaunchFolderFunc open_folders = NULL;
-    GtkTreeIter it;
-
     g_return_if_fail(FM_IS_FOLDER_VIEW(fv));
 
-    iface = FM_FOLDER_VIEW_GET_IFACE(fv);
+    FmFolderViewInterface * iface = FM_FOLDER_VIEW_GET_IFACE(fv);
     g_return_if_fail(iface);
 
-    if(path)
+    FmFileInfo * fi = NULL;
+    if (path)
     {
-        model = GTK_TREE_MODEL(iface->get_model(fv));
+        GtkTreeModel* model = GTK_TREE_MODEL(iface->get_model(fv));
+        GtkTreeIter it;
         if(gtk_tree_model_get_iter(model, &it, path))
             gtk_tree_model_get(model, &it, FM_FOLDER_MODEL_COL_INFO, &fi, -1);
     }
-    else
-        fi = NULL;
-    popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
-    if(popup == NULL) /* no fm_folder_view_add_popup() was called before */
-        goto send_signal;
-    win = GTK_WINDOW(gtk_menu_get_attach_widget(popup));
-    /* handle left and rigth clicks */
+
+    GtkMenu * popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
+    if (popup == NULL) /* no fm_folder_view_add_popup() was called before */
+        goto _end;
+
+    GtkWindow * win = GTK_WINDOW(gtk_menu_get_attach_widget(popup));
+
+    FmFolderViewUpdatePopup update_popup = NULL;
+    FmLaunchFolderFunc open_folders = NULL;
     if (iface->get_custom_menu_callbacks)
         iface->get_custom_menu_callbacks(fv, &update_popup, &open_folders);
+
     switch(type)
     {
     case FM_FV_ACTIVATED: /* file activated */
-        target = fm_file_info_get_target(fi);
-        if(target && !fm_file_info_is_symlink(fi))
-        {
-            /* symlinks also has fi->target, but we only handle shortcuts here. */
-            FmPath* real_path = fm_path_new_for_str(target);
-            fm_launch_path_simple(win, NULL, real_path, open_folders, win);
-            fm_path_unref(real_path);
-        }
-        else
-            fm_launch_file_simple(win, NULL, fi, open_folders, win);
+        fm_launch_file_simple(win, NULL, fi, open_folders, win);
         break;
     case FM_FV_CONTEXT_MENU:
-        if(fi)
+    {
+        FmFileInfoList* files = iface->dup_selected_files(fv);
+        if (files)
         {
-            FmFileMenu* menu;
-            FmFileInfoList* files = iface->dup_selected_files(fv);
-
-            /* workaround on ExoTreeView bug */
-            if(files == NULL)
-            {
-                on_menu(NULL, fv);
-                goto send_signal;
-            }
-
-            menu = fm_file_menu_new_for_files(win, files, fm_folder_view_get_cwd(fv), TRUE);
+            FmFileMenu* menu = fm_file_menu_new_for_files(win, files, fm_folder_view_get_cwd(fv), TRUE);
             fm_file_menu_set_folder_func(menu, open_folders, win);
 
             /* TODO: add info message on selection if enabled in config */
             /* merge some specific menu items */
-            if(update_popup)
+            if (update_popup)
                 update_popup(fv, win, fm_file_menu_get_ui(menu),
                              fm_file_menu_get_action_group(menu), files);
             fm_file_info_list_unref(files);
@@ -1634,13 +1613,16 @@ void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
             popup = fm_file_menu_get_menu(menu);
             gtk_menu_popup(popup, NULL, NULL, NULL, NULL, 3, gtk_get_current_event_time());
         }
-        else /* no files are selected. Show context menu of current folder. */
+        else
+        {
             on_menu(NULL, fv);
+        }
         break;
+    }
     default: ;
     }
-send_signal:
-    /* send signal */
+
+_end:
     g_signal_emit(fv, signals[CLICKED], 0, type, fi);
 }
 
