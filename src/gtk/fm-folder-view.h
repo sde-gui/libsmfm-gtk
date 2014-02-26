@@ -191,9 +191,12 @@ void            fm_folder_view_select_file_path(FmFolderView* fv, FmPath* path);
 void            fm_folder_view_select_file_paths(FmFolderView* fv, FmPathList* paths);
 void            fm_folder_view_unselect_all(FmFolderView* fv);
 
-/* generate a popup menu for the window */
+
+/* menu-related stuff */
 GtkMenu*        fm_folder_view_add_popup(FmFolderView* fv, GtkWindow* parent,
                                          FmFolderViewUpdatePopup update_popup);
+//void            fm_folder_view_show_popup(FmFolderView* fv);
+//void            fm_folder_view_show_popup_for_selected_files(FmFolderView* fv);
 
 void            fm_folder_view_set_active(FmFolderView* fv, gboolean set);
 
@@ -206,6 +209,8 @@ void            fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
 void            fm_folder_view_sel_changed(GObject* obj, FmFolderView* fv);
 void            fm_folder_view_columns_changed(FmFolderView* fv);
 //void            fm_folder_view_chdir(FmFolderView* fv, FmPath* path);
+
+void            fm_folder_view_files_clicked(FmFolderView* fv, FmFileInfo * fi, FmFileInfoList* files, FmFolderViewClickType type);
 
 #ifndef FM_DISABLE_DEPRECATED
 /* deprecated since 1.0.2; left until soname 5 for compatibility */
