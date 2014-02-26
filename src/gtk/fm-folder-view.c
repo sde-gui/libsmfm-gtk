@@ -237,12 +237,18 @@ static GQuark ui_quark;
 static GQuark popup_quark;
 static GQuark templates_quark;
 
-static void fm_folder_view_default_init(FmFolderViewInterface *iface)
+static void _init_quarks(void)
 {
+    if (ui_quark)
+        return;
+
     ui_quark = g_quark_from_static_string("popup-ui");
     popup_quark = g_quark_from_static_string("popup-menu");
     templates_quark = g_quark_from_static_string("templates-list");
+}
 
+static void fm_folder_view_default_init(FmFolderViewInterface *iface)
+{
     /* properties and signals */
     /**
      * FmFolderView::clicked:
@@ -821,6 +827,8 @@ static void on_run_app_toggled(GtkToggleButton *button, gboolean *run)
 
 static void on_create_new(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     const char* name = gtk_action_get_name(act);
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
@@ -919,6 +927,8 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
 
 static void on_cut(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -940,6 +950,8 @@ static void on_cut(GtkAction* act, FmFolderView* fv)
 
 static void on_copy(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -961,6 +973,8 @@ static void on_copy(GtkAction* act, FmFolderView* fv)
 
 static void on_paste(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -977,6 +991,8 @@ static void on_paste(GtkAction* act, FmFolderView* fv)
 
 static void on_trash(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -1005,6 +1021,8 @@ static void on_trash(GtkAction* act, FmFolderView* fv)
 
 static void on_rm(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -1028,6 +1046,8 @@ static void on_set_pattern(GtkAction* act, FmFolderView* fv)
 {
     g_return_if_fail(FM_IS_FOLDER_VIEW(fv));
 
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
 
@@ -1049,6 +1069,8 @@ static void on_set_pattern(GtkAction* act, FmFolderView* fv)
 
 static void on_select_all(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -1067,6 +1089,8 @@ static void on_invert_select(GtkAction* act, FmFolderView* fv)
 
 static void on_rename(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
 
@@ -1076,6 +1100,8 @@ static void on_rename(GtkAction* act, FmFolderView* fv)
 
 static void on_prop(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     FmFolder* folder = fm_folder_view_get_folder(fv);
 
     if(folder && fm_folder_is_valid(folder))
@@ -1092,6 +1118,8 @@ static void on_prop(GtkAction* act, FmFolderView* fv)
 
 static void on_file_prop(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     GtkWidget *win = gtk_menu_get_attach_widget(popup);
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(win));
@@ -1159,6 +1187,8 @@ static void popup_position_func(GtkMenu *menu, gint *x, gint *y,
 
 static void on_menu(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     GtkUIManager *ui = g_object_get_qdata(G_OBJECT(fv), ui_quark);
     GtkMenu *popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     FmFolderViewInterface *iface = FM_FOLDER_VIEW_GET_IFACE(fv);
@@ -1273,6 +1303,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *evt, FmFolderView* 
 
 static void on_file_menu(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     FmFolderViewInterface *iface = FM_FOLDER_VIEW_GET_IFACE(fv);
     GtkMenu *popup;
     FmFileInfoList* files;
@@ -1344,6 +1376,8 @@ static void on_change_type(GtkRadioAction* act, GtkRadioAction* cur, FmFolderVie
 
 static void on_ui_destroy(gpointer ui_ptr)
 {
+    _init_quarks();
+
     GtkUIManager* ui = (GtkUIManager*)ui_ptr;
     GtkMenu* popup = GTK_MENU(gtk_ui_manager_get_widget(ui, "/popup"));
     GtkWindow* win = GTK_WINDOW(gtk_menu_get_attach_widget(popup));
@@ -1376,6 +1410,8 @@ static void on_ui_destroy(gpointer ui_ptr)
 GtkMenu* fm_folder_view_add_popup(FmFolderView* fv, GtkWindow* parent,
                                   FmFolderViewUpdatePopup update_popup)
 {
+    _init_quarks();
+
     FmFolderViewInterface* iface;
     FmFolderModel* model;
     GtkUIManager* ui;
@@ -1468,6 +1504,8 @@ GtkMenu* fm_folder_view_add_popup(FmFolderView* fv, GtkWindow* parent,
  */
 void fm_folder_view_bounce_action(GtkAction* act, FmFolderView* fv)
 {
+    _init_quarks();
+
     const gchar *name;
     GtkUIManager *ui;
     GList *groups;
@@ -1507,6 +1545,8 @@ void fm_folder_view_bounce_action(GtkAction* act, FmFolderView* fv)
  */
 void fm_folder_view_set_active(FmFolderView* fv, gboolean set)
 {
+    _init_quarks();
+
     GtkUIManager *ui;
     GtkMenu *popup;
     GtkWindow* win;
@@ -1579,6 +1619,10 @@ void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
             gtk_tree_model_get(model, &it, FM_FOLDER_MODEL_COL_INFO, &fi, -1);
     }
 
+    FmFileInfoList* files = iface->dup_selected_files(fv);
+
+    _init_quarks();
+
     GtkMenu * popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
     if (popup == NULL) /* no fm_folder_view_add_popup() was called before */
         goto _end;
@@ -1597,7 +1641,6 @@ void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
         break;
     case FM_FV_CONTEXT_MENU:
     {
-        FmFileInfoList* files = iface->dup_selected_files(fv);
         if (files)
         {
             FmFileMenu* menu = fm_file_menu_new_for_files(win, files, fm_folder_view_get_cwd(fv), TRUE);
@@ -1608,8 +1651,6 @@ void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
             if (update_popup)
                 update_popup(fv, win, fm_file_menu_get_ui(menu),
                              fm_file_menu_get_action_group(menu), files);
-            fm_file_info_list_unref(files);
-
             popup = fm_file_menu_get_menu(menu);
             gtk_menu_popup(popup, NULL, NULL, NULL, NULL, 3, gtk_get_current_event_time());
         }
@@ -1623,6 +1664,8 @@ void fm_folder_view_item_clicked(FmFolderView* fv, GtkTreePath* path,
     }
 
 _end:
+    fm_file_info_list_unref(files);
+
     g_signal_emit(fv, signals[CLICKED], 0, type, fi);
 }
 
