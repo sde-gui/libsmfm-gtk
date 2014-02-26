@@ -195,8 +195,8 @@ void            fm_folder_view_unselect_all(FmFolderView* fv);
 /* menu-related stuff */
 GtkMenu*        fm_folder_view_add_popup(FmFolderView* fv, GtkWindow* parent,
                                          FmFolderViewUpdatePopup update_popup);
-//void            fm_folder_view_show_popup(FmFolderView* fv);
-//void            fm_folder_view_show_popup_for_selected_files(FmFolderView* fv);
+void            fm_folder_view_show_popup(FmFolderView* fv);
+void            fm_folder_view_show_popup_for_selected_files(FmFolderView* fv);
 
 void            fm_folder_view_set_active(FmFolderView* fv, gboolean set);
 

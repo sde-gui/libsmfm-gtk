@@ -110,8 +110,6 @@ static void on_invert_select(GtkAction* act, FmFolderView* fv);
 static void on_rename(GtkAction* act, FmFolderView* fv);
 static void on_prop(GtkAction* act, FmFolderView* fv);
 static void on_file_prop(GtkAction* act, FmFolderView* fv);
-static void on_menu(GtkAction* act, FmFolderView* fv);
-static void on_file_menu(GtkAction* act, FmFolderView* fv);
 static void on_show_hidden(GtkToggleAction* act, FmFolderView* fv);
 
 static const GtkActionEntry folder_popup_actions[]=
@@ -544,7 +542,7 @@ static void popup_position_func(GtkMenu *menu, gint *x, gint *y,
     *y = CLAMP(*y, 0, MAX(0, gdk_screen_height() - ma.height));
 }
 
-static void on_menu(GtkAction* act, FmFolderView* fv)
+void fm_folder_view_show_popup(FmFolderView* fv)
 {
     _init_quarks();
 
@@ -558,6 +556,7 @@ static void on_menu(GtkAction* act, FmFolderView* fv)
     FmSortMode mode;
     GtkSortType type = GTK_SORT_ASCENDING;
     FmFolderModelCol by;
+    GtkAction * act;
 
     /* update actions */
     model = iface->get_model(fv);
@@ -648,19 +647,19 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *evt, FmFolderView* 
     if((evt->keyval == GDK_KEY_Menu && !modifier) ||
        (evt->keyval == GDK_KEY_F10 && modifier == GDK_SHIFT_MASK))
     {
-        on_file_menu(NULL, fv);
+        fm_folder_view_show_popup_for_selected_files(fv);
         return TRUE;
     }
     else if((evt->keyval == GDK_KEY_Menu && modifier == GDK_CONTROL_MASK) ||
        (evt->keyval == GDK_KEY_F10 && modifier == GDK_CONTROL_MASK))
     {
-        on_menu(NULL, fv);
+        fm_folder_view_show_popup(fv);
         return TRUE;
     }
     return FALSE;
 }
 
-static void on_file_menu(GtkAction* act, FmFolderView* fv)
+void fm_folder_view_show_popup_for_selected_files(FmFolderView* fv)
 {
     _init_quarks();
 
@@ -697,7 +696,7 @@ static void on_file_menu(GtkAction* act, FmFolderView* fv)
     }
     else
     {
-        on_menu(NULL, fv);
+        fm_folder_view_show_popup(fv);
     }
 }
 
@@ -980,7 +979,7 @@ void fm_folder_view_files_clicked(FmFolderView* fv, FmFileInfo * fi, FmFileInfoL
         }
         else
         {
-            on_menu(NULL, fv);
+            fm_folder_view_show_popup(fv);
         }
         break;
     }
