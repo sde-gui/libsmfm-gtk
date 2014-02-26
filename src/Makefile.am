@@ -48,6 +48,7 @@ libsmfm_gtk2_SOURCES = \
 	fm-gtk.c \
 	$(gtk_compat_SOURCES) \
 	$(exo_SOURCES) \
+	gtk/fm-folder-menu.c \
 	gtk/fm-folder-view.c \
 	gtk/fm-standard-view.c \
 	gtk/fm-folder-model.c \
