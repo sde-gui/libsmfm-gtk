@@ -659,40 +659,57 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *evt, FmFolderView* 
     return FALSE;
 }
 
+GtkMenu * fm_folder_view_get_popup_for_selected_files(FmFolderView* fv)
+{
+    _init_quarks();
+
+    FmFolderViewInterface * iface = FM_FOLDER_VIEW_GET_IFACE(fv);
+    GtkMenu * popup = NULL;
+
+    if (iface->count_selected_files(fv) > 0)
+    {
+        GtkMenu * folder_popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
+        if (folder_popup == NULL) /* no fm_folder_view_add_popup() was called before */
+            return NULL;
+
+        FmFileInfoList * files = iface->dup_selected_files(fv);
+
+        GtkWindow * window = GTK_WINDOW(gtk_menu_get_attach_widget(folder_popup));
+
+        FmFileMenu* menu = fm_file_menu_new_for_files(window, files, fm_folder_view_get_cwd(fv), TRUE);
+
+        FmFolderViewUpdatePopup update_popup = NULL;
+        FmLaunchFolderFunc open_folders = NULL;
+        if (iface->get_custom_menu_callbacks)
+            iface->get_custom_menu_callbacks(fv, &update_popup, &open_folders);
+
+        fm_file_menu_set_folder_func(menu, open_folders, window);
+
+        /* TODO: add info message on selection if enabled in config */
+        /* merge some specific menu items */
+        if (update_popup)
+            update_popup(fv, window, fm_file_menu_get_ui(menu),
+                         fm_file_menu_get_action_group(menu), files);
+
+        fm_file_info_list_unref(files);
+
+        popup = fm_file_menu_get_menu(menu);
+    }
+
+    return popup;
+}
+
 void fm_folder_view_show_popup_for_selected_files(FmFolderView* fv)
 {
     _init_quarks();
 
     FmFolderViewInterface *iface = FM_FOLDER_VIEW_GET_IFACE(fv);
-    GtkMenu *popup;
-    FmFileInfoList* files;
-    GtkWindow *win;
-    FmFileMenu* menu;
-    FmFolderViewUpdatePopup update_popup = NULL;
-    FmLaunchFolderFunc open_folders = NULL;
 
     if(iface->count_selected_files(fv) > 0)
     {
-        popup = g_object_get_qdata(G_OBJECT(fv), popup_quark);
-        if(popup == NULL) /* no fm_folder_view_add_popup() was called before */
-            return;
-        files = iface->dup_selected_files(fv);
-        win = GTK_WINDOW(gtk_menu_get_attach_widget(popup));
-        menu = fm_file_menu_new_for_files(win, files, fm_folder_view_get_cwd(fv), TRUE);
-        if (iface->get_custom_menu_callbacks)
-            iface->get_custom_menu_callbacks(fv, &update_popup, &open_folders);
-        fm_file_menu_set_folder_func(menu, open_folders, win);
-
-        /* TODO: add info message on selection if enabled in config */
-        /* merge some specific menu items */
-        if(update_popup)
-            update_popup(fv, win, fm_file_menu_get_ui(menu),
-                         fm_file_menu_get_action_group(menu), files);
-        fm_file_info_list_unref(files);
-
-        popup = fm_file_menu_get_menu(menu);
-        gtk_menu_popup(popup, NULL, NULL, popup_position_func, fv, 3,
-                       gtk_get_current_event_time());
+        GtkMenu * popup = fm_folder_view_get_popup_for_selected_files(fv);
+        if (popup)
+            gtk_menu_popup(popup, NULL, NULL, popup_position_func, fv, 3, gtk_get_current_event_time());
     }
     else
     {
