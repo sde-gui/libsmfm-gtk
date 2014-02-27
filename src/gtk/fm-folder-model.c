@@ -922,7 +922,7 @@ static gint fm_folder_model_compare(gconstpointer item1,
     /* put folders before files */
 //    if(model->sort_mode & FM_SORT_FOLDER_FIRST)
     {
-        ret = fm_file_info_is_dir(file2) - fm_file_info_is_dir(file1);
+        ret = fm_file_info_is_directory(file2) - fm_file_info_is_directory(file1);
         if( ret )
             return ret;
     }
@@ -1165,7 +1165,7 @@ static inline gboolean file_can_show(FmFolderModel* model, FmFileInfo* file)
 
     if(model->pattern)
     {
-        if (!g_pattern_match_string(model->pattern, fm_file_info_get_name(file)) && !fm_file_info_is_dir(file))
+        if (!g_pattern_match_string(model->pattern, fm_file_info_get_name(file)) && !fm_file_info_is_directory(file))
             return FALSE;
     }
 

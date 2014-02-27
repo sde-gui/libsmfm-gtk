@@ -869,7 +869,7 @@ static void on_folder_files_added(FmFolder* folder, GSList* files, GList* item_l
         FmFileInfo* fi = FM_FILE_INFO(l->data);
         /* FIXME: should FmFolder generate "files-added" signal on
          * its first-time loading? Isn't "loaded" signal enough? */
-        if(fm_file_info_is_dir(fi)) /* TODO: maybe adding files can be allowed later */
+        if(fm_file_info_is_directory(fi)) /* TODO: maybe adding files can be allowed later */
         {
             /* ensure that the file is not yet in our model
             FmPath* path = fm_file_info_get_path(fi); */
@@ -996,7 +996,7 @@ void fm_dir_tree_model_load_row(FmDirTreeModel* model, GtkTreeIter* it, GtkTreeP
             for(file_l = fm_file_info_list_peek_head_link(files); file_l; file_l = file_l->next)
             {
                 FmFileInfo* fi = file_l->data;
-                if(fm_file_info_is_dir(fi))
+                if(fm_file_info_is_directory(fi))
                 {
                     /* FIXME: later we can try to support adding
                      *        files to the tree, too so this model

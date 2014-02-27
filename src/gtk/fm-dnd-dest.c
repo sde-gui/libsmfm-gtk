@@ -334,7 +334,7 @@ static gboolean fm_dnd_dest_can_receive_drop(FmFileInfo* dest_fi, FmPath* dest,
     /* we can drop only onto directory or desktop entry */
     if(fm_file_info_is_desktop_entry(dest_fi))
         return TRUE;
-    if(!fm_file_info_is_dir(dest_fi) || !fm_file_info_is_accessible(dest_fi))
+    if(!fm_file_info_is_directory(dest_fi) || !fm_file_info_is_accessible(dest_fi))
         return FALSE;
 
     /* check if we drop directory onto itself */
@@ -698,7 +698,7 @@ gboolean _on_drag_drop(FmDndDest* dd, GdkDragContext *drag_context,
                                 &len, &data) && data)
             {
                 FmFileInfo* dest = fm_dnd_dest_get_dest_file(dd);
-                if( dest && fm_file_info_is_dir(dest) )
+                if( dest && fm_file_info_is_directory(dest) )
                 {
                     FmPath* path = fm_path_new_child(fm_file_info_get_path(dest), (gchar*)data);
                     char* uri = fm_path_to_uri(path);

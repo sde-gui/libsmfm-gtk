@@ -553,7 +553,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
 
     /* shadow 'Paste' if clipboard is empty and unshadow if not */
     act = gtk_ui_manager_get_action(ui, "/popup/Paste");
-    if(items_num != 1 || !fm_file_info_is_dir(fm_file_info_list_peek_head(files)))
+    if(items_num != 1 || !fm_file_info_is_directory(fm_file_info_list_peek_head(files)))
     {
         gtk_action_set_visible(act, FALSE);
         act = gtk_ui_manager_get_action(ui, "/popup/AddBookmark");
