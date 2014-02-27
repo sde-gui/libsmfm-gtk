@@ -324,7 +324,6 @@ static void fm_file_menu_add_custom_actions(FmFileMenu* data, GString* xml, FmFi
 FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files, FmPath* cwd, gboolean auto_destroy)
 {
     GtkUIManager* ui;
-    GtkActionGroup* act_grp;
     GtkAction* act;
     FmFileInfo* fi = fm_file_info_list_peek_head(files);
     FmFileMenu* data = g_slice_new0(FmFileMenu);
@@ -346,6 +345,11 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
 
     data->all_virtual = data->same_fs && !fm_path_is_native(path);
     data->all_trash = data->same_fs && fm_path_is_trash(path);
+
+    data->auto_destroy = auto_destroy;
+
+    if (cwd)
+        data->cwd = fm_path_ref(cwd);
 
     /* create list of mime types */
     for(l = fm_file_info_list_peek_head_link(files); l; l = l->next)
@@ -395,17 +399,13 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
         }
     }
 
-    data->auto_destroy = auto_destroy;
     data->ui = ui = gtk_ui_manager_new();
-    data->act_grp = act_grp = gtk_action_group_new("Popup");
-    gtk_action_group_set_translation_domain(act_grp, GETTEXT_PACKAGE);
+    data->act_grp = gtk_action_group_new("Popup");
+    gtk_action_group_set_translation_domain(data->act_grp, GETTEXT_PACKAGE);
 
-    if(cwd)
-        data->cwd = fm_path_ref(cwd);
-
-    gtk_action_group_add_actions(act_grp, base_menu_actions, G_N_ELEMENTS(base_menu_actions), data);
+    gtk_action_group_add_actions(data->act_grp, base_menu_actions, G_N_ELEMENTS(base_menu_actions), data);
     gtk_ui_manager_add_ui_from_string(ui, base_menu_xml, -1, NULL);
-    gtk_ui_manager_insert_action_group(ui, act_grp, 0);
+    gtk_ui_manager_insert_action_group(ui, data->act_grp, 0);
 
     xml = g_string_new("<popup><placeholder name='ph2'>");
     if(apps) /* add specific menu items for those files */
@@ -434,7 +434,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
                                      NULL);
                 g_signal_connect(act, "activate", G_CALLBACK(on_open_with_app), data);
                 gtk_action_set_gicon(act, g_app_info_get_icon(app));
-                gtk_action_group_add_action(act_grp, act);
+                gtk_action_group_add_action(data->act_grp, act);
                 /* associate the app info object with the action */
                 g_object_set_qdata_full(G_OBJECT(act), fm_qdata_id, app, g_object_unref);
                 g_string_append_printf(xml, "<menuitem action='%s'/>", g_app_info_get_id(app));
@@ -521,7 +521,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
                                     _("Restore trashed files to original paths"),
                             NULL);
                 g_signal_connect(act, "activate", G_CALLBACK(on_untrash), data);
-                gtk_action_group_add_action(act_grp, act);
+                gtk_action_group_add_action(data->act_grp, act);
                 g_string_append(xml, "<menuitem action='UnTrash'/>");
             }
 
@@ -635,7 +635,7 @@ FmFileInfoList* fm_file_menu_get_file_info_list(FmFileMenu* menu)
  */
 GtkMenu* fm_file_menu_get_menu(FmFileMenu* menu)
 {
-    if( ! menu->menu )
+    if (!menu->menu)
     {
         menu->menu = GTK_MENU(gtk_ui_manager_get_widget(menu->ui, "/popup"));
         gtk_menu_attach_to_widget(menu->menu, GTK_WIDGET(menu->parent), NULL);
