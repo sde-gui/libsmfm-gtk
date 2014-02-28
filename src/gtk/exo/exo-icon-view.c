@@ -650,8 +650,6 @@ struct _ExoIconViewPrivate
   /* ExoIconViewFlags */
   guint flags;
 
-  gboolean new_model_set;
-
   gint update_indeces;
 
   /* Cached style properties. */
@@ -4221,12 +4219,6 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
 
     }
 
-    if (G_UNLIKELY (icon_view->priv->new_model_set))
-    {
-        icon_view->priv->new_model_set = FALSE;
-        fm_file_info_deferred_load_start();
-    }
-
 }
 
 
@@ -5875,8 +5867,6 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
   /* connect to the new model */
   if (G_LIKELY (model != NULL))
     {
-      icon_view->priv->new_model_set = TRUE;
-
       /* take a reference on the model */
       g_object_ref (G_OBJECT (model));
 
