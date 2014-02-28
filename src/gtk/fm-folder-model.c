@@ -82,10 +82,10 @@ struct _FmFolderModel
 typedef struct _FmFolderItem FmFolderItem;
 struct _FmFolderItem
 {
-    FmFileInfo* inf;
-    GdkPixbuf* icon;
+    FmFileInfo * inf;
+    GdkPixbuf * icon;
+    GdkPixbuf * thumbnail_icon;
     gpointer userdata;
-    gboolean is_thumbnail : 1;
     gboolean thumbnail_loading : 1;
     gboolean thumbnail_failed : 1;
     gboolean color_initialized: 1;
@@ -387,6 +387,8 @@ static inline void fm_folder_item_free(gpointer data)
     FmFolderItem* item = (FmFolderItem*)data;
     if (item->icon)
         g_object_unref(item->icon);
+    if (item->thumbnail_icon)
+        g_object_unref(item->thumbnail_icon);
     fm_file_info_unref(item->inf);
     g_slice_free(FmFolderItem, item);
 }
@@ -653,7 +655,6 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
 
     FmFolderItem* item = (FmFolderItem*)g_sequence_get(item_it);
     FmFileInfo* info = item->inf;
-    FmIcon* icon;
 
     if(column >= FM_FOLDER_MODEL_N_COLS) /* extension */
     {
@@ -662,23 +663,16 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
     else switch( (FmFolderModelCol)column )
     {
     case FM_FOLDER_MODEL_COL_GICON:
-        icon = fm_file_info_get_icon(info);
-        if(G_LIKELY(icon))
+    {
+        FmIcon * icon = fm_file_info_get_icon(info);
+        if (G_LIKELY(icon))
             g_value_set_object(value, icon->gicon);
         break;
+    }
     case FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL:
     case FM_FOLDER_MODEL_COL_ICON_WITH_THUMBNAIL:
     case FM_FOLDER_MODEL_COL_ICON_FORCE_THUMBNAIL:
     {
-        if(G_UNLIKELY(!item->icon))
-        {
-            icon = fm_file_info_get_icon(info);
-            if(!icon)
-                return;
-            item->icon = fm_pixbuf_from_icon(icon, model->icon_size);
-        }
-        g_value_set_object(value, item->icon);
-
         gboolean show_thumbnail;
         if (column == FM_FOLDER_MODEL_COL_ICON_NO_THUMBNAIL)
             show_thumbnail = FALSE;
@@ -687,11 +681,28 @@ static void fm_folder_model_get_value(GtkTreeModel *tree_model,
         else
             show_thumbnail = fm_config->show_thumbnail;
 
+        if (show_thumbnail && item->thumbnail_icon)
+        {
+            g_value_set_object(value, item->thumbnail_icon);
+        }
+        else
+        {
+            if (G_UNLIKELY(!item->icon))
+            {
+                FmIcon * icon = fm_file_info_get_icon(info);
+                if (!icon)
+                    return;
+                item->icon = fm_pixbuf_from_icon(icon, model->icon_size);
+            }
+            g_value_set_object(value, item->icon);
+        }
+
         /* if we want to show a thumbnail */
         /* if we're on local filesystem or thumbnailing for remote files is allowed */
-        if (show_thumbnail && (fm_path_is_native_or_trash(fm_file_info_get_path(info)) || !fm_config->thumbnail_local))
+        if (item->thumbnail_icon == NULL && show_thumbnail &&
+            (fm_path_is_native_or_trash(fm_file_info_get_path(info)) || !fm_config->thumbnail_local))
         {
-            if(!item->is_thumbnail && !item->thumbnail_failed && !item->thumbnail_loading)
+            if (!item->thumbnail_failed && !item->thumbnail_loading)
             {
                 if(fm_file_info_can_thumbnail(item->inf))
                 {
@@ -1144,11 +1155,18 @@ void fm_folder_model_file_changed(FmFolderModel* model, FmFileInfo* file)
     item = (FmFolderItem*)g_sequence_get(items_it);
 
     /* update the icon */
-    if( item->icon )
+    if (item->icon)
     {
         g_object_unref(item->icon);
         item->icon = NULL;
     }
+
+    if (item->thumbnail_icon)
+    {
+        g_object_unref(item->thumbnail_icon);
+        item->thumbnail_icon = NULL;
+    }
+
     it.stamp = model->stamp;
     it.user_data  = items_it;
 
@@ -1261,20 +1279,31 @@ static void reload_icons(FmFolderModel* model, enum ReloadFlags flags)
     for( ; !g_sequence_iter_is_end(it); it = g_sequence_iter_next(it) )
     {
         FmFolderItem* item = (FmFolderItem*)g_sequence_get(it);
-        if(item->icon)
+
+        gboolean changed = FALSE;
+
+        if (item->icon && (flags & RELOAD_ICONS))
+        {
+            g_object_unref(item->icon);
+            item->icon = NULL;
+            changed = TRUE;
+        }
+
+        if (item->thumbnail_icon && (flags & RELOAD_THUMBNAILS))
+        {
+            g_object_unref(item->thumbnail_icon);
+            item->thumbnail_icon = NULL;
+            changed = TRUE;
+        }
+
+        item->thumbnail_loading = FALSE;
+
+        if (changed)
         {
             GtkTreeIter tree_it;
-            if((flags & RELOAD_ICONS && !item->is_thumbnail) ||
-               (flags & RELOAD_THUMBNAILS && item->is_thumbnail))
-            {
-                g_object_unref(item->icon);
-                item->icon = NULL;
-                item->is_thumbnail = FALSE;
-                item->thumbnail_loading = FALSE;
-                tree_it.stamp = model->stamp;
-                tree_it.user_data = it;
-                gtk_tree_model_row_changed(GTK_TREE_MODEL(model), tp, &tree_it);
-            }
+            tree_it.stamp = model->stamp;
+            tree_it.user_data = it;
+            gtk_tree_model_row_changed(GTK_TREE_MODEL(model), tp, &tree_it);
         }
         gtk_tree_path_next(tp);
     }
@@ -1284,13 +1313,17 @@ static void reload_icons(FmFolderModel* model, enum ReloadFlags flags)
     for( ; !g_sequence_iter_is_end(it); it = g_sequence_iter_next(it) )
     {
         FmFolderItem* item = (FmFolderItem*)g_sequence_get(it);
-        if(item->icon)
+        if (item->icon)
         {
             g_object_unref(item->icon);
             item->icon = NULL;
-            item->is_thumbnail = FALSE;
-            item->thumbnail_loading = FALSE;
         }
+        if (item->thumbnail_icon)
+        {
+            g_object_unref(item->thumbnail_icon);
+            item->thumbnail_icon = NULL;
+        }
+        item->thumbnail_loading = FALSE;
     }
 }
 
@@ -1354,10 +1387,9 @@ static void on_thumbnail_loaded(FmThumbnailRequest* req, gpointer user_data)
             it.stamp = model->stamp;
             it.user_data = seq_it;
             tp = fm_folder_model_get_path(GTK_TREE_MODEL(model), &it);
-            if(item->icon)
-                g_object_unref(item->icon);
-            item->icon = g_object_ref(pix);
-            item->is_thumbnail = TRUE;
+            if(item->thumbnail_icon)
+                g_object_unref(item->thumbnail_icon);
+            item->thumbnail_icon = g_object_ref(pix);
             gdk_threads_enter();
             gtk_tree_model_row_changed(GTK_TREE_MODEL(model), tp, &it);
             gtk_tree_path_free(tp);
@@ -1430,10 +1462,10 @@ static void reload_thumbnail(FmFolderModel* model, GSequenceIter* seq_it, FmFold
 {
     GtkTreeIter it;
     GtkTreePath* tp;
-    if(item->is_thumbnail)
+    if (item->thumbnail_icon)
     {
-        g_object_unref(item->icon);
-        item->icon = NULL;
+        g_object_unref(item->thumbnail_icon);
+        item->thumbnail_icon = NULL;
         it.stamp = model->stamp;
         it.user_data = seq_it;
         tp = fm_folder_model_get_path(GTK_TREE_MODEL(model), &it);
@@ -1565,7 +1597,7 @@ static void on_thumbnail_max_changed(FmConfig* cfg, gpointer user_data)
         else /* no limit, all files can be added */
         {
             /* add all files to thumbnail requests */
-            if(!item->is_thumbnail && !item->thumbnail_loading && !item->thumbnail_failed && fm_file_info_can_thumbnail(fi))
+            if (!item->thumbnail_icon && !item->thumbnail_loading && !item->thumbnail_failed && fm_file_info_can_thumbnail(fi))
             {
                 GList* l = find_in_pending_thumbnail_requests(model, fi);
                 if(!l)
