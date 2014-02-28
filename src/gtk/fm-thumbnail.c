@@ -35,6 +35,7 @@
 #include <config.h>
 #endif
 #include "fm-thumbnail.h"
+#include "fm-icon-pixbuf.h"
 
 /* FIXME: this function prototype seems to be missing in header files of GdkPixbuf. Bug report to them. */
 gboolean gdk_pixbuf_set_option(GdkPixbuf *pixbuf, const gchar *key, const gchar *value);
@@ -58,10 +59,11 @@ gboolean gdk_pixbuf_set_option(GdkPixbuf *pixbuf, const gchar *key, const gchar 
 /* in main loop */
 FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
                                          guint size,
+                                         FmThumbnailIconType icon_type,
                                          FmThumbnailReadyCallback callback,
                                          gpointer user_data)
 {
-    return fm_thumbnail_loader_load(src_file, size, callback, user_data);
+    return fm_thumbnail_loader_load(src_file, size, icon_type, callback, user_data);
 }
 
 /**
@@ -130,6 +132,12 @@ guint fm_thumbnail_request_get_size(FmThumbnailRequest* req)
     return fm_thumbnail_loader_get_size(req);
 }
 
+/* in main loop */
+FmThumbnailIconType fm_thumbnail_request_get_icon_type(FmThumbnailRequest* req)
+{
+    return fm_thumbnail_loader_get_icon_type(req);
+}
+
 static GObject* read_image_from_file(const char* filename) {
     return (GObject*)gdk_pixbuf_new_from_file(filename, NULL);
 }
@@ -171,6 +179,11 @@ static GObject* rotate_image(GObject* image, int degree)
 	return (GObject*)gdk_pixbuf_rotate_simple(GDK_PIXBUF(image), (GdkPixbufRotation)degree);
 }
 
+static GObject* read_simple_icon(FmFileInfo * fi, guint size)
+{
+    return (GObject*) fm_pixbuf_from_icon(fm_file_info_get_icon(fi), size);
+}
+
 FmThumbnailLoaderBackend gtk_backend = {
     read_image_from_file,
     read_image_from_stream,
@@ -179,7 +192,8 @@ FmThumbnailLoaderBackend gtk_backend = {
     rotate_image,
     get_image_width,
     get_image_height,
-    get_image_text
+    get_image_text,
+    read_simple_icon
 };
 
 /* in main loop */

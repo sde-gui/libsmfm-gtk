@@ -124,6 +124,9 @@ GdkPixbuf* fm_pixbuf_from_icon(FmIcon* icon, int size)
     GSList *pixs, *l;
     PixEntry* ent;
 
+    if (!icon)
+        return NULL;
+
     pixs = (GSList*)fm_icon_get_user_data(icon);
     for( l = pixs; l; l=l->next )
     {

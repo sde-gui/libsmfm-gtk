@@ -51,6 +51,7 @@ void _fm_thumbnail_finalize();
 
 FmThumbnailRequest* fm_thumbnail_request(FmFileInfo* src_file,
                                     guint size,
+                                    FmThumbnailIconType icon_type,
                                     FmThumbnailReadyCallback callback,
                                     gpointer user_data);
 
@@ -61,6 +62,7 @@ GdkPixbuf* fm_thumbnail_request_get_pixbuf(FmThumbnailRequest* req);
 FmFileInfo* fm_thumbnail_request_get_file_info(FmThumbnailRequest* req);
 
 guint fm_thumbnail_request_get_size(FmThumbnailRequest* req);
+FmThumbnailIconType fm_thumbnail_request_get_icon_type(FmThumbnailRequest* req);
 
 G_END_DECLS
 
