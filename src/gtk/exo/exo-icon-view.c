@@ -546,10 +546,9 @@ struct _ExoIconViewPrivate
   long rough_item_width;
   long rough_item_height;
   long fairly_layouted_items_at_this_step;
-  long max_fairly_layouted_items_at_one_step;
   long items_seen;
   long rought_items_left;
-  long layout_prio;
+  long long layout_deadline_time;
 
   gboolean doing_rubberband;
   gint rubberband_x_1, rubberband_y_1;
@@ -2176,8 +2175,6 @@ exo_icon_view_motion_notify_event (GtkWidget      *widget,
   gint             abso;
   GtkAllocation    allocation;
 
-  icon_view->priv->layout_prio = 0;
-
   exo_icon_view_maybe_begin_drag (icon_view, event);
   gtk_widget_get_allocation (widget, &allocation);
 
@@ -2543,8 +2540,6 @@ exo_icon_view_button_press_event (GtkWidget      *widget,
   if (event->window != icon_view->priv->bin_window)
     return FALSE;
 
-  icon_view->priv->layout_prio = 0;
-
   /* stop any pending "single-click-timeout" */
   if (G_UNLIKELY (icon_view->priv->single_click_timeout_id != 0))
     g_source_remove (icon_view->priv->single_click_timeout_id);
@@ -2700,8 +2695,6 @@ exo_icon_view_button_release_event (GtkWidget      *widget,
 
   update_indeces(icon_view);
 
-  icon_view->priv->layout_prio = 0;
-
   if (icon_view->priv->pressed_button == (gint) event->button)
     {
       /* check if we're in single click mode */
@@ -2743,8 +2736,6 @@ exo_icon_view_scroll_event (GtkWidget      *widget,
   gdouble        delta;
   gdouble        value;
 
-  icon_view->priv->layout_prio = 0;
-
   /* we don't care for scroll events in "rows" layout mode, as
    * that's completely handled by GtkScrolledWindow.
    */
@@ -2784,8 +2775,6 @@ exo_icon_view_key_press_event (GtkWidget   *widget,
   gulong       popup_menu_id;
   gchar       *new_text;
   gchar       *old_text;
-
-  icon_view->priv->layout_prio = 0;
 
   /* let the parent class handle the key bindings and stuff */
   if ((*GTK_WIDGET_CLASS (exo_icon_view_parent_class)->key_press_event) (widget, event))
@@ -3772,11 +3761,9 @@ exo_icon_view_layout (ExoIconView *icon_view)
     priv->rough_item_width = 1024;
     priv->rough_item_height = 1024;
     priv->fairly_layouted_items_at_this_step = 0;
-    priv->max_fairly_layouted_items_at_one_step = 100 + priv->layout_prio * 250;
     priv->items_seen = 0;
     priv->rought_items_left = 0;
-    if (priv->layout_prio < 10)
-        priv->layout_prio++;
+    priv->layout_deadline_time = g_get_monotonic_time() + G_USEC_PER_SEC * 0.2;
 
     /* determine the layout mode */
     if (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
@@ -3851,11 +3838,10 @@ exo_icon_view_layout (ExoIconView *icon_view)
 
     exo_icon_view_force_draw(icon_view);
 
-/*
-    printf("    fairly_layouted_items_at_this_step = %ld\n", priv->fairly_layouted_items_at_this_step);
-    printf("    items_seen = %ld\n", priv->items_seen);
-    printf("    rought_items_left = %ld\n", priv->rought_items_left);
-*/
+    g_debug("ExoIconView: incremental layout: %ld items handled at this step",
+        priv->fairly_layouted_items_at_this_step,
+        priv->items_seen);
+
     return priv->rought_items_left == 0;
 }
 
@@ -3906,7 +3892,14 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
       item->cell_areas = (GdkRectangle *) (buffer + item->n_cells * sizeof (GdkRectangle));
     }
 
-  gboolean doing_rough_layout = priv->fairly_layouted_items_at_this_step > priv->max_fairly_layouted_items_at_one_step;
+//  gboolean doing_rough_layout = priv->fairly_layouted_items_at_this_step > priv->max_fairly_layouted_items_at_one_step;
+
+  gboolean doing_rough_layout = FALSE;
+  if (priv->layout_deadline_time == 0 || priv->layout_deadline_time < g_get_monotonic_time())
+  {
+    doing_rough_layout = TRUE;
+    priv->layout_deadline_time = 0;
+  }
 
   item->rough_layout_done = TRUE;
 
