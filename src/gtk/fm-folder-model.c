@@ -1388,12 +1388,6 @@ static gboolean _fm_file_info_can_thumbnail(FmFileInfo * fi, FmThumbnailIconType
     if (fm_config->thumbnail_local && !fm_path_is_native_or_trash(fm_file_info_get_path(fi)))
         return FALSE;
 
-    /* FIXME:
-       fm_file_info_is_image() can block in IO, so this check should be in thumbnailer thread, not here.
-    */
-    if (fm_file_info_is_image(fi) && (fm_file_info_get_size(fi) > fm_config->thumbnail_max << 10))
-        return FALSE;
-
     return fm_file_info_can_thumbnail(fi);
 }
 
