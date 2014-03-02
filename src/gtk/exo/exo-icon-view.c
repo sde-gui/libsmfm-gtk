@@ -1846,7 +1846,7 @@ exo_icon_view_style_set (GtkWidget *widget,
   if (gtk_widget_get_realized (widget))
     gdk_window_set_background (icon_view->priv->bin_window, &style->base[gtk_widget_get_state(widget)]);
 
-  exo_icon_view_queue_draw(icon_view);
+  exo_icon_view_invalidate_sizes(icon_view);
 }
 
 static void
