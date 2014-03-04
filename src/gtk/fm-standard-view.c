@@ -335,7 +335,8 @@ static void unset_model(FmStandardView* fv)
 {
     if(fv->model)
     {
-        fm_folder_view_unselect_all(FM_FOLDER_VIEW(fv));
+        if (fv->mode_settings.type != FmViewType_Icon)
+            fm_folder_view_unselect_all(FM_FOLDER_VIEW(fv));
 
         FmFolderModel* model = fv->model;
         /* g_debug("unset_model: %p, n_ref = %d", model, G_OBJECT(model)->ref_count); */
