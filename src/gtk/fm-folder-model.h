@@ -57,6 +57,7 @@ struct _FmFolderModelClass
     void (*row_deleting)(FmFolderModel* model, GtkTreePath* tp,
                          GtkTreeIter* iter, gpointer data);
     void (*filter_changed)(FmFolderModel* model);
+    void (*filtering_changed)(FmFolderModel* model);
     /*< private >*/
     gpointer _reserved1;
     gpointer _reserved2;
@@ -105,6 +106,10 @@ gboolean fm_folder_model_get_sort(FmFolderModel* model, FmFolderModelCol *col, F
 
 void fm_folder_model_set_use_custom_colors(FmFolderModel* model, gboolean use_custom_colors);
 gboolean fm_folder_model_get_use_custom_colors(FmFolderModel* model);
+
+int fm_folder_model_get_n_visible_items(FmFolderModel * model);
+int fm_folder_model_get_n_hidden_items(FmFolderModel * model);
+int fm_folder_model_get_n_incoming_items(FmFolderModel * model);
 
 G_END_DECLS
 

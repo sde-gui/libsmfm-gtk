@@ -203,6 +203,7 @@ static void on_thumbnail_max_changed(FmConfig* cfg, gpointer user_data);
 enum {
     ROW_DELETING,
     FILTER_CHANGED,
+    FILTERING_CHANGED,
     N_SIGNALS
 };
 
@@ -274,6 +275,25 @@ static void fm_folder_model_class_init(FmFolderModelClass *klass)
                      NULL, NULL,
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE, 0);
+
+    /**
+     * FmFolderModel::filtering-changed:
+     * @model: folder model instance that received the signal
+     *
+     * This signal is emitted when model data were changed due to filter
+     * changes or changes in the linked folder (some files appeared or removed).
+     *
+     * Since: 1.4.0
+     */
+    signals[FILTERING_CHANGED] =
+        g_signal_new("filtering-changed",
+                     G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(FmFolderModelClass, filtering_changed),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE, 0);
+
 }
 
 static void fm_folder_model_tree_model_init(GtkTreeModelIface *iface)
@@ -482,6 +502,9 @@ static gboolean incoming_items_handler(gpointer user_data)
             break;
     }
 
+    if (items_handled)
+        g_signal_emit(model, signals[FILTERING_CHANGED], 0);
+
     g_debug("FmFolderModel: %s: %lld items handled in %lld µs", __FUNCTION__,
         items_handled, (long long) g_get_monotonic_time() - start_time);
 
@@ -537,6 +560,7 @@ static void _fm_folder_model_files_added(FmFolder* dir, GSList* files,
         FmFileInfo* fi = FM_FILE_INFO(l->data);
         _fm_folder_model_add_file(model, fi);
     }
+    g_signal_emit(model, signals[FILTERING_CHANGED], 0);
 }
 
 
@@ -546,6 +570,7 @@ static void _fm_folder_model_files_removed(FmFolder* dir, GSList* files,
     GSList* l;
     for( l = files; l; l=l->next )
         fm_folder_model_file_deleted(model, FM_FILE_INFO(l->data));
+    g_signal_emit(model, signals[FILTERING_CHANGED], 0);
 }
 
 /**
@@ -658,6 +683,8 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
             }
         }
     }
+
+    g_signal_emit(model, signals[FILTERING_CHANGED], 0);
 }
 
 static GtkTreeModelFlags fm_folder_model_get_flags(GtkTreeModel *tree_model)
@@ -1838,6 +1865,7 @@ void fm_folder_model_apply_filters(FmFolderModel* model)
         g_slist_free(items_to_show);
     }
     g_signal_emit(model, signals[FILTER_CHANGED], 0);
+    g_signal_emit(model, signals[FILTERING_CHANGED], 0);
 }
 
 /**
@@ -1894,6 +1922,8 @@ gboolean fm_folder_model_get_sort(FmFolderModel* model, FmFolderModelCol *col,
     return TRUE;
 }
 
+/*****************************************************************************/
+
 void fm_folder_model_set_use_custom_colors(FmFolderModel* model, gboolean use_custom_colors)
 {
     model->use_custom_colors = use_custom_colors;
@@ -1902,4 +1932,21 @@ void fm_folder_model_set_use_custom_colors(FmFolderModel* model, gboolean use_cu
 gboolean fm_folder_model_get_use_custom_colors(FmFolderModel* model)
 {
     return model->use_custom_colors;
+}
+
+/*****************************************************************************/
+
+int fm_folder_model_get_n_visible_items(FmFolderModel * model)
+{
+    return g_sequence_get_length(model->items);
+}
+
+int fm_folder_model_get_n_hidden_items(FmFolderModel * model)
+{
+    return g_sequence_get_length(model->hidden);
+}
+
+int fm_folder_model_get_n_incoming_items(FmFolderModel * model)
+{
+    return g_sequence_get_length(model->incoming_items);
 }
