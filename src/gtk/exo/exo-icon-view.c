@@ -3445,6 +3445,32 @@ exo_icon_view_adjustment_changed (GtkAdjustment *adjustment,
 }
 
 
+static void
+exo_icon_view_set_adjustment_upper (GtkAdjustment *adj,
+                                    gdouble        upper)
+{
+  if (upper != gtk_adjustment_get_upper(adj))
+    {
+      gdouble min = MAX (0.0, upper - gtk_adjustment_get_page_size(adj));
+      gboolean value_changed = FALSE;
+
+      gtk_adjustment_set_upper(adj, upper);
+
+      if (gtk_adjustment_get_value(adj) > min)
+        {
+          gtk_adjustment_set_value(adj, min);
+          value_changed = TRUE;
+        }
+
+      gtk_adjustment_changed (adj);
+
+      if (value_changed)
+        gtk_adjustment_value_changed (adj);
+    }
+}
+
+/*****************************************************************************/
+
 static GList*
 exo_icon_view_layout_single_row (ExoIconView *icon_view,
                                  GList       *first_item,
@@ -3638,33 +3664,6 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
 
   return last_item;
 }
-
-
-
-static void
-exo_icon_view_set_adjustment_upper (GtkAdjustment *adj,
-                                    gdouble        upper)
-{
-  if (upper != gtk_adjustment_get_upper(adj))
-    {
-      gdouble min = MAX (0.0, upper - gtk_adjustment_get_page_size(adj));
-      gboolean value_changed = FALSE;
-
-      gtk_adjustment_set_upper(adj, upper);
-
-      if (gtk_adjustment_get_value(adj) > min)
-        {
-          gtk_adjustment_set_value(adj, min);
-          value_changed = TRUE;
-        }
-
-      gtk_adjustment_changed (adj);
-
-      if (value_changed)
-        gtk_adjustment_value_changed (adj);
-    }
-}
-
 
 
 static gint
@@ -3980,110 +3979,137 @@ size_estimation:
 }
 
 
-
+/*
+Adjusts (increases) item's bounding box according to maximum sizes of the cells in the line.
+*/
 static void
-exo_icon_view_calculate_item_size2 (ExoIconView     *icon_view,
-                                    ExoIconViewItem *item,
-                                    gint            *max_width,
-                                    gint            *max_height,
-                                    gboolean         rtl)
+exo_icon_view_adjust_item_box_for_line(ExoIconView     *icon_view,
+                                       ExoIconViewItem *item,
+                                       gint            *cell_max_width,
+                                       gint            *cell_max_height,
+                                       gboolean         rtl)
 {
-  ExoIconViewCellInfo *info;
-  GdkRectangle        *box;
-  GdkRectangle         cell_area;
-  GList               *lp;
-  gint                 spacing;
-  gint                 i, k;
-  gint                 xpad, ypad;
-  gfloat               xalign, yalign;
-  const ExoIconViewPrivate *priv = icon_view->priv;
+    int i;
+    ExoIconViewPrivate * priv = icon_view->priv;
 
-  spacing = priv->spacing;
+    int cell_spacing = priv->spacing;
+    int item_padding = priv->item_padding;
 
-  if (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
+    if (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
     {
-      item->bounding_box.height = 0;
-      for (i = 0; i < priv->n_cells; ++i)
+        item->bounding_box.height = 0;
+        for (i = 0; i < priv->n_cells; ++i)
         {
-          if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            item->bounding_box.height = MAX (item->bounding_box.height, max_height[i]);
-          else
-            item->bounding_box.height += max_height[i] + (i > 0 ? spacing : 0);
+            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+                item->bounding_box.height = MAX (item->bounding_box.height, cell_max_height[i]);
+            else
+                item->bounding_box.height += cell_max_height[i] + (i > 0 ? cell_spacing : 0);
         }
-      item->bounding_box.height += priv->item_padding * 2;
+        item->bounding_box.height += item_padding * 2;
     }
-  else
+    else
     {
-      item->bounding_box.width = 0;
-      for (i = 0; i < priv->n_cells; ++i)
+        item->bounding_box.width = 0;
+        for (i = 0; i < priv->n_cells; ++i)
         {
-          if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            item->bounding_box.width += max_width[i] + (i > 0 ? spacing : 0);
-          else
-            item->bounding_box.width = MAX (item->bounding_box.width, max_width[i]);
+            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+                item->bounding_box.width += cell_max_width[i] + (i > 0 ? cell_spacing : 0);
+            else
+                item->bounding_box.width = MAX (item->bounding_box.width, cell_max_width[i]);
         }
-      item->bounding_box.width += priv->item_padding * 2;
-    }
-
-  cell_area.x = item->bounding_box.x + priv->item_padding;
-  cell_area.y = item->bounding_box.y + priv->item_padding;
-
-  for (k = 0; k < 2; ++k)
-    {
-      for (lp = priv->cell_list, i = 0; lp != NULL; lp = lp->next, ++i)
-        {
-          info = EXO_ICON_VIEW_CELL_INFO (lp->data);
-
-          if (info->pack == (k ? GTK_PACK_START : GTK_PACK_END))
-            continue;
-          if (G_UNLIKELY (!gtk_cell_renderer_get_visible(info->cell)))
-            continue;
-
-          if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            {
-              cell_area.width = item->cell_boxes[info->position].width;
-              cell_area.height = item->bounding_box.height - 2 * priv->item_padding;
-            }
-          else
-            {
-              cell_area.width = item->bounding_box.width - 2 * priv->item_padding;
-              cell_area.height = max_height[i];
-            }
-
-          item->cell_areas[info->position] = cell_area;
-
-          box = item->cell_boxes + info->position;
-          gtk_cell_renderer_get_alignment (info->cell, &xalign, &yalign);
-          //gtk_cell_renderer_get_padding (info->cell, &xpad, &ypad);
-          xpad = ypad = 0;
-          box->x = cell_area.x + (rtl ? (1.0 - xalign) : xalign) * (cell_area.width - box->width - (2 * xpad));
-          box->x = MAX (box->x, 0);
-          box->y = cell_area.y + yalign * (cell_area.height - box->height - (2 * ypad));
-          box->y = MAX (box->y, 0);
-
-          if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            {
-              cell_area.x += cell_area.width + spacing;
-            }
-          else
-            {
-              cell_area.y += cell_area.height + spacing;
-            }
-        }
-    }
-
-  if (G_UNLIKELY (rtl && priv->orientation == GTK_ORIENTATION_HORIZONTAL))
-    {
-      for (i = 0; i < icon_view->priv->n_cells; i++)
-      {
-        item->cell_boxes[i].x =
-            item->bounding_box.x + item->bounding_box.width -
-            (item->cell_boxes[i].x + item->cell_boxes[i].width - item->bounding_box.x);
-      }
+        item->bounding_box.width += item_padding * 2;
     }
 }
 
+static void
+exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
+                                         ExoIconViewItem *item,
+                                         gint            *cell_max_width,
+                                         gint            *cell_max_height,
+                                         gboolean         rtl)
+{
+    ExoIconViewPrivate * priv = icon_view->priv;
 
+    const int cell_spacing = priv->spacing;
+    const int item_padding = priv->item_padding;
+
+    GdkRectangle cell_area;
+    cell_area.x = item->bounding_box.x + item_padding;
+    cell_area.y = item->bounding_box.y + item_padding;
+
+    gint k;
+    for (k = 0; k < 2; ++k)
+    {
+        GList * lp; int i;
+        for (lp = priv->cell_list, i = 0; lp != NULL; lp = lp->next, ++i)
+        {
+            ExoIconViewCellInfo * info = EXO_ICON_VIEW_CELL_INFO (lp->data);
+
+            if (info->pack == (k ? GTK_PACK_START : GTK_PACK_END))
+                continue;
+            if (G_UNLIKELY(!gtk_cell_renderer_get_visible(info->cell)))
+                continue;
+
+            GdkRectangle * cell_box = &item->cell_boxes[info->position];
+
+            if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+            {
+                cell_area.width = item->cell_boxes[info->position].width;
+                cell_area.height = item->bounding_box.height - 2 * item_padding;
+            }
+            else
+            {
+                cell_area.width = item->bounding_box.width - 2 * item_padding;
+                cell_area.height = cell_max_height[i];
+            }
+
+            item->cell_areas[info->position] = cell_area;
+
+            gint   xpad, ypad;
+            gfloat xalign, yalign;
+            gtk_cell_renderer_get_alignment(info->cell, &xalign, &yalign);
+            //gtk_cell_renderer_get_padding(info->cell, &xpad, &ypad);
+            xpad = ypad = 0;
+            cell_box->x = cell_area.x + (rtl ? (1.0 - xalign) : xalign) * (cell_area.width - cell_box->width - (2 * xpad));
+            cell_box->x = MAX (cell_box->x, 0);
+            cell_box->y = cell_area.y + yalign * (cell_area.height - cell_box->height - (2 * ypad));
+            cell_box->y = MAX (cell_box->y, 0);
+
+            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+            {
+                cell_area.x += cell_area.width + cell_spacing;
+            }
+            else
+            {
+                cell_area.y += cell_area.height + cell_spacing;
+            }
+        }
+    }
+
+    if (G_UNLIKELY (rtl && priv->orientation == GTK_ORIENTATION_HORIZONTAL))
+    {
+        int i;
+        for (i = 0; i < icon_view->priv->n_cells; i++)
+        {
+            item->cell_boxes[i].x =
+                item->bounding_box.x + item->bounding_box.width -
+                (item->cell_boxes[i].x + item->cell_boxes[i].width - item->bounding_box.x);
+        }
+    }
+}
+
+static void
+exo_icon_view_calculate_item_size2(ExoIconView     *icon_view,
+                                   ExoIconViewItem *item,
+                                   gint            *cell_max_width,
+                                   gint            *cell_max_height,
+                                   gboolean         rtl)
+{
+    exo_icon_view_adjust_item_box_for_line(icon_view, item, cell_max_width, cell_max_height, rtl);
+    exo_icon_view_adjust_item_cells_for_line(icon_view, item, cell_max_width, cell_max_height, rtl);
+}
+
+/*****************************************************************************/
 
 static void
 exo_icon_view_invalidate_sizes (ExoIconView *icon_view)
@@ -4096,7 +4122,7 @@ exo_icon_view_invalidate_sizes (ExoIconView *icon_view)
   exo_icon_view_queue_layout (icon_view);
 }
 
-
+/*****************************************************************************/
 
 static void
 exo_icon_view_paint_item (ExoIconView     *icon_view,
