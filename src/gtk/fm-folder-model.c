@@ -452,7 +452,6 @@ static void _on_visible_item_removed(FmFolderModel * model, GSequenceIter * item
 
 /*****************************************************************************/
 
-
 static gboolean incoming_items_handler(gpointer user_data)
 {
     FmFolderModel * model = (FmFolderModel *) user_data;
@@ -625,7 +624,7 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
         g_object_unref(model->folder);
         model->folder = NULL;
     }
-    if( !dir )
+    if (!dir)
         return;
     model->items = g_sequence_new(fm_folder_item_free);
     model->hidden = g_sequence_new(fm_folder_item_free);
@@ -642,15 +641,21 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
                      G_CALLBACK(_fm_folder_model_files_changed),
                      model);
 
-    if(fm_folder_is_loaded(model->folder) || fm_folder_is_incremental(model->folder)) /* if it's already loaded */
+    if (fm_folder_is_loaded(model->folder) || fm_folder_is_incremental(model->folder)) /* if it's already loaded */
     {
         /* add existing files to the model */
-        if(!fm_folder_is_empty(model->folder))
+        if (!fm_folder_is_empty(model->folder))
         {
+            long long start_time = g_get_monotonic_time();
             GList *l;
             FmFileInfoList* files = fm_folder_get_files(model->folder);
-            for( l = fm_file_info_list_peek_head_link(files); l; l = l->next )
-                _fm_folder_model_add_file(model, FM_FILE_INFO(l->data));
+            for (l = fm_file_info_list_peek_head_link(files); l; l = l->next)
+            {
+                if (g_get_monotonic_time() - start_time < G_USEC_PER_SEC * 0.2)
+                    _fm_folder_model_add_file_real(model, FM_FILE_INFO(l->data));
+                else
+                    _fm_folder_model_add_file_to_incoming(model, FM_FILE_INFO(l->data));
+            }
         }
     }
 }
