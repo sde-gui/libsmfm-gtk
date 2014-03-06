@@ -31,8 +31,8 @@
  */
 
 #include <libsmfm-core/fm-config.h>
-
 #include "fm-cell-renderer-pixbuf.h"
+#include "fm-pixbuf-utils.h"
 
 static void fm_cell_renderer_pixbuf_dispose  (GObject *object);
 
@@ -164,11 +164,13 @@ static void fm_cell_renderer_pixbuf_dispose(GObject *object)
     g_return_if_fail(FM_IS_CELL_RENDERER_PIXBUF(object));
 
     self = FM_CELL_RENDERER_PIXBUF(object);
-    if( self->fi )
+
+    if (self->file_info)
     {
-        fm_file_info_unref(self->fi);
-        self->fi = NULL;
+        fm_file_info_unref(self->file_info);
+        self->file_info = NULL;
     }
+
     if(self->icon)
     {
         g_object_unref(self->icon);
@@ -214,10 +216,10 @@ static void fm_cell_renderer_pixbuf_get_property ( GObject *object,
                                       GParamSpec *psec )
 {
     FmCellRendererPixbuf* renderer = FM_CELL_RENDERER_PIXBUF(object);
-    switch( param_id )
+    switch(param_id)
     {
     case PROP_INFO:
-        g_value_set_pointer(value, renderer->fi ? fm_file_info_ref(renderer->fi) : NULL);
+        g_value_set_pointer(value, renderer->file_info ? fm_file_info_ref(renderer->file_info) : NULL);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID ( object, param_id, psec );
@@ -231,12 +233,12 @@ static void fm_cell_renderer_pixbuf_set_property ( GObject *object,
                                       GParamSpec *psec )
 {
     FmCellRendererPixbuf* renderer = FM_CELL_RENDERER_PIXBUF(object);
-    switch ( param_id )
+    switch (param_id)
     {
     case PROP_INFO:
-        if( renderer->fi )
-            fm_file_info_unref(renderer->fi);
-        renderer->fi = fm_file_info_ref(FM_FILE_INFO(g_value_get_pointer(value)));
+        if (renderer->file_info)
+            fm_file_info_unref(renderer->file_info);
+        renderer->file_info = fm_file_info_ref(FM_FILE_INFO(g_value_get_pointer(value)));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID ( object, param_id, psec );
@@ -266,22 +268,35 @@ static void fm_cell_renderer_pixbuf_get_size   (GtkCellRenderer            *cell
                                                 const
 #endif
 						 GdkRectangle               *rectangle,
-						 gint                       *x_offset,
-						 gint                       *y_offset,
-						 gint                       *width,
-						 gint                       *height)
+						 gint                       *_x_offset,
+						 gint                       *_y_offset,
+						 gint                       *_width,
+						 gint                       *_height)
 {
+    gint x_offset = 0,
+         y_offset = 0,
+         width = 0,
+         height = 0;
+
     FmCellRendererPixbuf* render = FM_CELL_RENDERER_PIXBUF(cell);
-    if(render->fixed_w > 0 && render->fixed_h > 0)
+    if (render->fixed_w > 0 && render->fixed_h > 0)
     {
-        *width = render->fixed_w;
-        *height = render->fixed_h;
+        width = render->fixed_w;
+        height = render->fixed_h;
     }
     else
     {
-        GTK_CELL_RENDERER_CLASS(fm_cell_renderer_pixbuf_parent_class)->get_size(cell, widget, rectangle, x_offset, y_offset, width, height);
+        GTK_CELL_RENDERER_CLASS(fm_cell_renderer_pixbuf_parent_class)->get_size(
+            cell, widget, rectangle, &x_offset, &y_offset, &width, &height
+        );
     }
+
+    if (_x_offset) *_x_offset = x_offset;
+    if (_y_offset) *_y_offset = y_offset;
+    if (_width) *_width = width;
+    if (_height) *_height = height;
 }
+
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 static void fm_cell_renderer_pixbuf_render(GtkCellRenderer *cell,
@@ -300,48 +315,128 @@ static void fm_cell_renderer_pixbuf_render     (GtkCellRenderer            *cell
 						 GtkCellRendererState        flags)
 #endif
 {
-    FmCellRendererPixbuf* render = FM_CELL_RENDERER_PIXBUF(cell);
-    FmFileInfo *info = NULL;
+    FmCellRendererPixbuf * render = FM_CELL_RENDERER_PIXBUF(cell);
+    GtkCellRendererPixbuf * _render = (GtkCellRendererPixbuf *) render;
+
+    GdkPixbuf * pixbuf;
+    GdkPixbuf * original_pixbuf;
+    GdkPixbuf * invisible = NULL;
+    GdkPixbuf * colorized = NULL;
+
+    //g_object_get(render, "pixbuf", &original_pixbuf, NULL);
+    original_pixbuf = g_object_ref(_render->pixbuf);
+
+    if (!original_pixbuf)
+        return;
+
+    pixbuf = original_pixbuf;
+
     /* we don't need to follow state for prelit items */
     if(flags & GTK_CELL_RENDERER_PRELIT)
         flags &= ~GTK_CELL_RENDERER_PRELIT;
-    if(fm_config->shadow_hidden)
-    {
-        g_object_get(render, "info", &info, NULL); // FIXME: is info certainly FmFileInfo?
-        gtk_cell_renderer_set_sensitive(cell, !(info && fm_file_info_is_hidden(info)));
-    }
-#if GTK_CHECK_VERSION(3, 0, 0)
-    GTK_CELL_RENDERER_CLASS(fm_cell_renderer_pixbuf_parent_class)->render(cell, cr, widget, background_area, cell_area, flags);
-#else
-    GTK_CELL_RENDERER_CLASS(fm_cell_renderer_pixbuf_parent_class)->render(cell, window, widget, background_area, cell_area, expose_area, flags);
-#endif
 
-    if (render->fi && G_UNLIKELY(fm_file_info_is_symlink(render->fi)))
-    {
-        GdkPixbuf* pix;
-        g_object_get(render, "pixbuf", &pix, NULL);
+#define Pi(expr) g_print("%s = %d\n", (#expr), (int) (expr))
 
-        if (pix)
+    GdkRectangle pix_rect;
+    fm_cell_renderer_pixbuf_get_size(cell, widget, cell_area,
+        &pix_rect.x,
+        &pix_rect.y,
+        &pix_rect.width,
+        &pix_rect.height);
+
+    pix_rect.x += cell_area->x + cell->xpad;
+    pix_rect.y += cell_area->y + cell->ypad;
+    pix_rect.width  -= cell->xpad * 2;
+    pix_rect.height -= cell->ypad * 2;
+
+    GdkRectangle draw_rect;
+    if (!gdk_rectangle_intersect(cell_area, &pix_rect, &draw_rect) ||
+        !gdk_rectangle_intersect(expose_area, &draw_rect, &draw_rect))
+        return;
+
+    if (/*priv->follow_state && */
+        (flags & (GTK_CELL_RENDERER_SELECTED|GTK_CELL_RENDERER_PRELIT)))
+    {
+        GtkStateType state;
+
+        if (flags & GTK_CELL_RENDERER_SELECTED)
         {
-            long pixbuf_width = gdk_pixbuf_get_width(pix);
-            long pixbuf_height = gdk_pixbuf_get_height(pix);
+            if (gtk_widget_has_focus (widget))
+                state = GTK_STATE_SELECTED;
+            else
+                state = GTK_STATE_ACTIVE;
+        }
+        else
+        {
+            state = GTK_STATE_PRELIGHT;
+        }
 
-            if (pixbuf_width > 0 && pixbuf_height > 0)
-            {
+        colorized = fm_pixbuf_create_colorized(pixbuf, &widget->style->base[state]);
+        pixbuf = colorized;
+    }
+
+    gboolean isInsensitive = !cell->sensitive || (gtk_widget_get_state (widget) == GTK_STATE_INSENSITIVE);
+    if (!isInsensitive && fm_config->shadow_hidden)
+    {
+        isInsensitive = (render->file_info && fm_file_info_is_hidden(render->file_info));
+    }
+
+    if (isInsensitive)
+    {
+        GtkIconSource * source = gtk_icon_source_new();
+        gtk_icon_source_set_pixbuf (source, pixbuf);
+        /* The size here is arbitrary; since size isn't
+         * wildcarded in the source, it isn't supposed to be
+         * scaled by the engine function
+         */
+        gtk_icon_source_set_size (source, GTK_ICON_SIZE_SMALL_TOOLBAR);
+        gtk_icon_source_set_size_wildcarded (source, FALSE);
+
+        invisible = gtk_style_render_icon (widget->style,
+            source,
+            gtk_widget_get_direction (widget),
+            GTK_STATE_INSENSITIVE,
+            /* arbitrary */
+            (GtkIconSize)-1,
+            widget,
+            "gtkcellrendererpixbuf"
+        );
+
+        gtk_icon_source_free (source);
+        pixbuf = invisible;
+    }
 
 #if !GTK_CHECK_VERSION(3, 0, 0)
-                cairo_t *cr = gdk_cairo_create(window);
+    cairo_t *cr = gdk_cairo_create(window);
 #endif
-                int x = cell_area->x + (cell_area->width  - pixbuf_width )/2;
-                int y = cell_area->y + (cell_area->height - pixbuf_height)/2;
 
-                gdk_cairo_set_source_pixbuf(cr, link_icon, x, y);
-                cairo_paint(cr);
-#if !GTK_CHECK_VERSION(3, 0, 0)
-                cairo_destroy(cr);
-#endif
-            }
-            g_object_unref(pix);
+    gdk_cairo_set_source_pixbuf(cr, pixbuf, pix_rect.x, pix_rect.y);
+    gdk_cairo_rectangle(cr, &draw_rect);
+    cairo_fill(cr);
+
+    if (render->file_info && fm_file_info_is_symlink(render->file_info))
+    {
+        long pixbuf_width = gdk_pixbuf_get_width(pixbuf);
+        long pixbuf_height = gdk_pixbuf_get_height(pixbuf);
+
+        if (pixbuf_width > 0 && pixbuf_height > 0)
+        {
+
+            int x = cell_area->x + (cell_area->width  - pixbuf_width )/2;
+            int y = cell_area->y + (cell_area->height - pixbuf_height)/2;
+
+            gdk_cairo_set_source_pixbuf(cr, link_icon, x, y);
+            cairo_paint(cr);
         }
     }
+
+#if !GTK_CHECK_VERSION(3, 0, 0)
+    cairo_destroy(cr);
+#endif
+
+    if (invisible)
+        g_object_unref(invisible);
+    if (colorized)
+        g_object_unref(colorized);
+    g_object_unref(original_pixbuf);
 }

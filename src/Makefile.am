@@ -67,6 +67,7 @@ libsmfm_gtk2_SOURCES = \
 	gtk/fm-clipboard.c \
 	gtk/fm-progress-dlg.c \
 	gtk/fm-icon-pixbuf.c \
+	gtk/fm-pixbuf-utils.c \
 	gtk/fm-cell-renderer-text.c \
 	gtk/fm-cell-renderer-pixbuf.c \
 	gtk/fm-dnd-src.c \
@@ -103,6 +104,7 @@ libsmfmgtkinclude_HEADERS = \
 	gtk/fm-clipboard.h \
 	gtk/fm-progress-dlg.h \
 	gtk/fm-icon-pixbuf.h \
+	gtk/fm-pixbuf-utils.h \
 	gtk/fm-cell-renderer-text.h \
 	gtk/fm-cell-renderer-pixbuf.h \
 	gtk/fm-dnd-src.h \
