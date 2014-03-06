@@ -541,9 +541,13 @@ struct _ExoIconViewPrivate
   guint vscroll_policy : 1;
 #endif
 
+  long hadjustment_value;
+  long vadjustment_value;
+
   guint delayed_expose_timeout_id;
 
   gint layout_idle_id;
+  gboolean layout_defers_redraw;
   long fairly_layouted_items_at_this_step;
   long items_seen;
   long faked_geometry_items;
@@ -3433,9 +3437,12 @@ exo_icon_view_adjustment_changed (GtkAdjustment *adjustment,
     if (!gtk_widget_get_realized(GTK_WIDGET(icon_view)))
         return;
 
+    icon_view->priv->hadjustment_value = gtk_adjustment_get_value(icon_view->priv->hadjustment);
+    icon_view->priv->vadjustment_value = gtk_adjustment_get_value(icon_view->priv->vadjustment);
+
     gdk_window_move(icon_view->priv->bin_window,
-        -gtk_adjustment_get_value(icon_view->priv->hadjustment),
-        -gtk_adjustment_get_value(icon_view->priv->vadjustment));
+        -icon_view->priv->hadjustment_value,
+        -icon_view->priv->vadjustment_value);
 
     if (icon_view->priv->doing_rubberband)
         exo_icon_view_update_rubberband(GTK_WIDGET(icon_view));
@@ -3478,7 +3485,8 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
                                  long         line,
                                  long        *v,
                                  long        *maximum_u_width,
-                                 long         max_posl)
+                                 long         max_posl,
+                                 gboolean    *redraw_queued)
 {
   ExoIconViewPrivate *priv = icon_view->priv;
   GList              *last_item;
@@ -3591,6 +3599,21 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
         {
             exo_icon_view_calculate_item_positions (icon_view, item, max_width, max_height, rtl);
             item->positions_valid = TRUE;
+
+            if (!*redraw_queued)
+            {
+                gboolean cross_x = !(
+                    (item->bounding_box.x + item->bounding_box.width < priv->hadjustment_value) ||
+                    (item->bounding_box.x > priv->hadjustment_value + priv->allocation.width)
+                );
+
+                gboolean cross_y = !(
+                    (item->bounding_box.y + item->bounding_box.height < priv->vadjustment_value) ||
+                    (item->bounding_box.y > priv->vadjustment_value + priv->allocation.height)
+                );
+                if (cross_x && cross_y)
+                    *redraw_queued = TRUE;
+            }
         }
 
         int ajdusted_v;
@@ -3612,7 +3635,7 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
     return last_item;
 }
 
-static gint
+static gboolean
 exo_icon_view_layout_lines (ExoIconView *icon_view, long item_u_width)
 {
     ExoIconViewPrivate * priv = icon_view->priv;
@@ -3620,6 +3643,7 @@ exo_icon_view_layout_lines (ExoIconView *icon_view, long item_u_width)
     gboolean ROWS = (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS);
     long allocation_v_height = ROWS ? priv->allocation.height : priv->allocation.width;
     long max_posl = 0;
+    gboolean redraw_queued = FALSE;
 
 restart: ;
 
@@ -3634,7 +3658,8 @@ restart: ;
         icons = exo_icon_view_layout_single_line(
             icon_view, icons,
             item_u_width, line,
-            &v, &maximum_u_width, max_posl
+            &v, &maximum_u_width, max_posl,
+            &redraw_queued
         );
 
         /* count the number of positions in the first line */
@@ -3674,7 +3699,7 @@ restart: ;
         priv->height = maximum_u_width;
     }
 
-    return posl;
+    return redraw_queued;
 }
 
 
@@ -3721,7 +3746,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
     gboolean ROWS = (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS);
     long item_u_width = ROWS ? max_item_width : max_item_height;
 
-    exo_icon_view_layout_lines(icon_view, item_u_width);
+    gboolean redraw_queued = exo_icon_view_layout_lines(icon_view, item_u_width);
 
     exo_icon_view_set_adjustment_upper (priv->hadjustment, priv->width);
     exo_icon_view_set_adjustment_upper (priv->vadjustment, priv->height);
@@ -3733,7 +3758,16 @@ exo_icon_view_layout (ExoIconView *icon_view)
                            MAX (priv->height, allocation.height));
     }
 
-    exo_icon_view_force_draw(icon_view);
+    if (redraw_queued && priv->faked_geometry_items != 0 && !priv->layout_defers_redraw)
+    {
+        priv->layout_defers_redraw = TRUE;
+        redraw_queued = FALSE;
+    }
+    else if (redraw_queued || priv->layout_defers_redraw)
+    {
+        priv->layout_defers_redraw = FALSE;
+        exo_icon_view_force_draw(icon_view);
+    }
 
     g_debug("ExoIconView: incremental layout: %ld items handled at this step (%ld items total)",
         priv->fairly_layouted_items_at_this_step,
