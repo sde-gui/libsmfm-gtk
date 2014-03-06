@@ -553,12 +553,11 @@ struct _ExoIconViewPrivate
   guint delayed_expose_timeout_id;
 
   gint layout_idle_id;
-  long rough_item_width;
-  long rough_item_height;
   long fairly_layouted_items_at_this_step;
   long items_seen;
   long faked_geometry_items;
   long long layout_deadline_time;
+  ExoIconViewItem * copy_geometry_from;
 
   gboolean doing_rubberband;
   gint rubberband_x_1, rubberband_y_1;
@@ -3769,8 +3768,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
 
     gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
-    priv->rough_item_width = 1024;
-    priv->rough_item_height = 1024;
+    priv->copy_geometry_from = NULL;
     priv->fairly_layouted_items_at_this_step = 0;
     priv->items_seen = 0;
     priv->faked_geometry_items = 0;
@@ -3874,22 +3872,22 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
                                    ExoIconViewItem *item)
 {
     GList               *lp;
-    gchar               *buffer;
     ExoIconViewPrivate  *priv = icon_view->priv;
 
     priv->items_seen++;
     if (item->layout_done)
-        goto size_estimation;
+        goto end;
 
     if (G_UNLIKELY(item->n_cells != priv->n_cells))
     {
         item->n_cells = priv->n_cells;
         g_free(item->cell_geometries);
-        item->cell_geometries = g_malloc0(item->n_cells * (sizeof(ExoIconViewCellGeometry)));
+        item->cell_geometries = g_malloc0(item->n_cells * sizeof(ExoIconViewCellGeometry));
     }
 
     gboolean use_faked_geometry = FALSE;
-    if (priv->layout_deadline_time == 0 || priv->layout_deadline_time < g_get_monotonic_time())
+    if ((priv->layout_deadline_time == 0 || priv->layout_deadline_time < g_get_monotonic_time()) &&
+        priv->copy_geometry_from)
     {
         use_faked_geometry = TRUE;
         priv->layout_deadline_time = 0;
@@ -3899,27 +3897,15 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
 
     if (use_faked_geometry)
     {
-        item->bounding_box.width  = priv->rough_item_width;
-        item->bounding_box.height  = priv->rough_item_height;
-
-        for (lp = priv->cell_list; lp != NULL; lp = lp->next)
-        {
-            ExoIconViewCellInfo * info = EXO_ICON_VIEW_CELL_INFO (lp->data);
-            ExoIconViewCellGeometry * geometry = &item->cell_geometries[info->position];
-            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-            {
-                geometry->required_box.width = item->bounding_box.width / item->n_cells;
-                geometry->required_box.height = item->bounding_box.height;
-            }
-            else
-            {
-                geometry->required_box.width = item->bounding_box.width;
-                geometry->required_box.height = item->bounding_box.height / item->n_cells;
-            }
-        }
+        item->bounding_box.width = priv->copy_geometry_from->bounding_box.width;
+        item->bounding_box.height  = priv->copy_geometry_from->bounding_box.height;
+        memcpy(
+            item->cell_geometries,
+            priv->copy_geometry_from->cell_geometries,
+            item->n_cells * sizeof(ExoIconViewCellGeometry)
+        );
 
         priv->faked_geometry_items++;
-
         return;
     }
 
@@ -3965,17 +3951,15 @@ exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
         }
     }
 
-  item->bounding_box.width += priv->item_padding * 2;
-  item->bounding_box.height += priv->item_padding * 2;
+    item->bounding_box.width += priv->item_padding * 2;
+    item->bounding_box.height += priv->item_padding * 2;
 
-  priv->fairly_layouted_items_at_this_step++;
+    priv->fairly_layouted_items_at_this_step++;
 
-  item->layout_done = TRUE;
+    item->layout_done = TRUE;
 
-size_estimation:
-
-    priv->rough_item_width = MIN(priv->rough_item_width, item->bounding_box.width);
-    priv->rough_item_height = MIN(priv->rough_item_width, item->bounding_box.height);
+end:
+    priv->copy_geometry_from = item;
 }
 
 
