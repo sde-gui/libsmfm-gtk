@@ -171,7 +171,7 @@ typedef enum
 typedef struct _ExoIconViewCellInfo ExoIconViewCellInfo;
 typedef struct _ExoIconViewChild    ExoIconViewChild;
 typedef struct _ExoIconViewItem     ExoIconViewItem;
-
+typedef struct _ExoIconViewCellGeometry ExoIconViewCellGeometry;
 
 
 #define EXO_ICON_VIEW_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), EXO_TYPE_ICON_VIEW, ExoIconViewPrivate))
@@ -497,22 +497,31 @@ struct _ExoIconViewChild
   gint             cell;
 };
 
+struct _ExoIconViewCellGeometry
+{
+    GdkRectangle allocated_box;
+    GdkRectangle required_box;
+    gint xpad, ypad;
+    gfloat xalign, yalign;
+    gboolean visible;
+};
+
 struct _ExoIconViewItem
 {
   GtkTreeIter iter;
 
   GdkRectangle bounding_box;
   gint n_cells;
-  GdkRectangle *cell_boxes;
-  GdkRectangle *cell_areas;
+  ExoIconViewCellGeometry * cell_geometries;
+
   gint index;
 
   guint row : ((sizeof (guint) / 2) * 8) - 1;
   guint col : ((sizeof (guint) / 2) * 8) - 1;
   guint selected : 1;
   guint selected_before_rubberbanding : 1;
-  guint layout_done;
-  guint rough_layout_done;
+  guint layout_done : 1;
+  guint faked_geometry : 1;
 };
 
 struct _ExoIconViewPrivate
@@ -548,7 +557,7 @@ struct _ExoIconViewPrivate
   long rough_item_height;
   long fairly_layouted_items_at_this_step;
   long items_seen;
-  long rought_items_left;
+  long faked_geometry_items;
   long long layout_deadline_time;
 
   gboolean doing_rubberband;
@@ -1754,7 +1763,7 @@ exo_icon_view_allocate_children (ExoIconView *icon_view)
         allocation.height = area.height - icon_view->priv->item_padding * 2;
       }
       else
-        allocation = child->item->cell_boxes[child->cell];
+        allocation = child->item->cell_geometries[child->cell].required_box;
 
       /* increase the item area by focus width/padding */
       allocation.x = MAX (0, allocation.x - (focus_line_width + focus_padding));
@@ -3122,10 +3131,10 @@ exo_icon_view_item_hit_test (const ExoIconView          *icon_view,
             continue;
 
         /* libfm: bug #3390778: item->cell_boxes isn't allocated yet here! bad design! */
-        if (!item->cell_boxes)
+        if (!item->cell_geometries)
             break;
 
-        if (rectangle_hit_test(test_box, &(item->cell_boxes[info->position])))
+        if (rectangle_hit_test(test_box, &(item->cell_geometries[info->position].required_box)))
         {
             if (cell_at_pos)
                 *cell_at_pos = info;
@@ -3513,7 +3522,6 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
     {
       item = EXO_ICON_VIEW_ITEM (items->data);
 
-      //exo_icon_view_calculate_item_size (icon_view, item);
       colspan = 1 + (item->bounding_box.width - 1) / (item_width + priv->column_spacing);
 
       item->bounding_box.width = colspan * item_width + (colspan - 1) * priv->column_spacing;
@@ -3535,8 +3543,8 @@ exo_icon_view_layout_single_row (ExoIconView *icon_view,
 
       for (i = 0; i < priv->n_cells; i++)
         {
-          max_width[i] = MAX (max_width[i], item->cell_boxes[i].width);
-          max_height[i] = MAX (max_height[i], item->cell_boxes[i].height);
+          max_width[i] = MAX (max_width[i], item->cell_geometries[i].required_box.width);
+          max_height[i] = MAX (max_height[i], item->cell_geometries[i].required_box.height);
         }
 
       if (current_width > *maximum_width)
@@ -3613,8 +3621,6 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
     {
       item = EXO_ICON_VIEW_ITEM (items->data);
 
-      //exo_icon_view_calculate_item_size (icon_view, item);
-
       rowspan = 1 + (item->bounding_box.height - 1) / (item_height + priv->row_spacing);
 
       item->bounding_box.height = rowspan * item_height + (rowspan - 1) * priv->row_spacing;
@@ -3635,8 +3641,8 @@ exo_icon_view_layout_single_col (ExoIconView *icon_view,
 
       for (i = 0; i < priv->n_cells; i++)
         {
-          max_width[i] = MAX (max_width[i], item->cell_boxes[i].width);
-          max_height[i] = MAX (max_height[i], item->cell_boxes[i].height);
+          max_width[i] = MAX (max_width[i], item->cell_geometries[i].required_box.width);
+          max_height[i] = MAX (max_height[i], item->cell_geometries[i].required_box.height);
         }
 
       if (current_height > *maximum_height)
@@ -3759,13 +3765,15 @@ exo_icon_view_layout (ExoIconView *icon_view)
 
     exo_icon_view_update_cached_style_properties(icon_view);
 
+    update_indeces(icon_view);
+
     gtk_widget_get_allocation (GTK_WIDGET (icon_view), &allocation);
 
     priv->rough_item_width = 1024;
     priv->rough_item_height = 1024;
     priv->fairly_layouted_items_at_this_step = 0;
     priv->items_seen = 0;
-    priv->rought_items_left = 0;
+    priv->faked_geometry_items = 0;
     priv->layout_deadline_time = g_get_monotonic_time() + G_USEC_PER_SEC * 0.2;
 
     /* determine the layout mode */
@@ -3845,7 +3853,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
         priv->fairly_layouted_items_at_this_step,
         priv->items_seen);
 
-    return priv->rought_items_left == 0;
+    return priv->faked_geometry_items == 0;
 }
 
 
@@ -3856,7 +3864,7 @@ exo_icon_view_get_cell_area (ExoIconView         *icon_view,
                              ExoIconViewCellInfo *info,
                              GdkRectangle        *cell_area)
 {
-    *cell_area = item->cell_areas[info->position];
+    *cell_area = item->cell_geometries[info->position].allocated_box;
 }
 
 
@@ -3865,103 +3873,95 @@ static void
 exo_icon_view_calculate_item_size (ExoIconView     *icon_view,
                                    ExoIconViewItem *item)
 {
-  ExoIconViewCellInfo *info;
-  GList               *lp;
-  gchar               *buffer;
-#if GTK_CHECK_VERSION(3, 0, 0)
-  GtkRequisition       requisition;
-#endif
-  ExoIconViewPrivate *priv = icon_view->priv;
+    GList               *lp;
+    gchar               *buffer;
+    ExoIconViewPrivate  *priv = icon_view->priv;
 
-  priv->items_seen++;
-  if (item->layout_done)
-    goto size_estimation;
+    priv->items_seen++;
+    if (item->layout_done)
+        goto size_estimation;
 
-  update_indeces(icon_view);
-
-  if (G_UNLIKELY (item->n_cells != priv->n_cells))
+    if (G_UNLIKELY(item->n_cells != priv->n_cells))
     {
-      /* apply the new cell size */
-      item->n_cells = priv->n_cells;
-
-      /* release the memory chunk (if any) */
-      g_free (item->cell_boxes);
-
-      /* allocate a single memory chunk for box, after and before */
-      buffer = g_malloc0(2 * item->n_cells * (sizeof (GdkRectangle)));
-
-      /* assign the memory */
-      item->cell_boxes = (GdkRectangle *) (buffer);
-      item->cell_areas = (GdkRectangle *) (buffer + item->n_cells * sizeof (GdkRectangle));
+        item->n_cells = priv->n_cells;
+        g_free(item->cell_geometries);
+        item->cell_geometries = g_malloc0(item->n_cells * (sizeof(ExoIconViewCellGeometry)));
     }
 
-//  gboolean doing_rough_layout = priv->fairly_layouted_items_at_this_step > priv->max_fairly_layouted_items_at_one_step;
+    gboolean use_faked_geometry = FALSE;
+    if (priv->layout_deadline_time == 0 || priv->layout_deadline_time < g_get_monotonic_time())
+    {
+        use_faked_geometry = TRUE;
+        priv->layout_deadline_time = 0;
+    }
 
-  gboolean doing_rough_layout = FALSE;
-  if (priv->layout_deadline_time == 0 || priv->layout_deadline_time < g_get_monotonic_time())
-  {
-    doing_rough_layout = TRUE;
-    priv->layout_deadline_time = 0;
-  }
+    item->faked_geometry = use_faked_geometry;
 
-  item->rough_layout_done = TRUE;
+    if (use_faked_geometry)
+    {
+        item->bounding_box.width  = priv->rough_item_width;
+        item->bounding_box.height  = priv->rough_item_height;
 
-  if (doing_rough_layout)
-  {
-    item->bounding_box.width  = priv->rough_item_width;
-    item->bounding_box.height  = priv->rough_item_height;
+        for (lp = priv->cell_list; lp != NULL; lp = lp->next)
+        {
+            ExoIconViewCellInfo * info = EXO_ICON_VIEW_CELL_INFO (lp->data);
+            ExoIconViewCellGeometry * geometry = &item->cell_geometries[info->position];
+            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+            {
+                geometry->required_box.width = item->bounding_box.width / item->n_cells;
+                geometry->required_box.height = item->bounding_box.height;
+            }
+            else
+            {
+                geometry->required_box.width = item->bounding_box.width;
+                geometry->required_box.height = item->bounding_box.height / item->n_cells;
+            }
+        }
 
+        priv->faked_geometry_items++;
+
+        return;
+    }
+
+    exo_icon_view_set_cell_data(icon_view, item, FALSE);
+
+    item->bounding_box.width = 0;
+    item->bounding_box.height = 0;
     for (lp = priv->cell_list; lp != NULL; lp = lp->next)
     {
-      info = EXO_ICON_VIEW_CELL_INFO (lp->data);
-      if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
-      {
-          item->cell_boxes[info->position].width = item->bounding_box.width / item->n_cells;
-          item->cell_boxes[info->position].height = item->bounding_box.height;
-      }
-      else
-      {
-          item->cell_boxes[info->position].width = item->bounding_box.width;
-          item->cell_boxes[info->position].height = item->bounding_box.height / item->n_cells;
-      }
-    }
+        ExoIconViewCellInfo * info = EXO_ICON_VIEW_CELL_INFO (lp->data);
+        ExoIconViewCellGeometry * geometry = &item->cell_geometries[info->position];
 
-    priv->rought_items_left++;
+        geometry->visible = gtk_cell_renderer_get_visible(info->cell);
+        if (G_UNLIKELY(!geometry->visible))
+            continue;
 
-    return;
-  }
-
-  exo_icon_view_set_cell_data (icon_view, item, FALSE);
-
-  item->bounding_box.width = 0;
-  item->bounding_box.height = 0;
-  for (lp = priv->cell_list; lp != NULL; lp = lp->next)
-    {
-      info = EXO_ICON_VIEW_CELL_INFO (lp->data);
-      if (G_UNLIKELY (!gtk_cell_renderer_get_visible(info->cell)))
-         continue;
+        gtk_cell_renderer_get_alignment(info->cell, &geometry->xalign, &geometry->yalign);
+        //gtk_cell_renderer_get_padding(info->cell, &geometry->xpad, &geometry->ypad);
+        geometry->xpad = geometry->ypad = 0;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-      gtk_cell_renderer_get_preferred_size (info->cell, GTK_WIDGET (icon_view),
-                                            NULL, &requisition);
-      item->cell_boxes[info->position].width = requisition.width;
-      item->cell_boxes[info->position].height = requisition.height;
+        GtkRequisition requisition;
+        gtk_cell_renderer_get_preferred_size(info->cell, GTK_WIDGET (icon_view), NULL, &requisition);
+        geometry->required_box.width = requisition.width;
+        geometry->required_box.height = requisition.height;
 #else
-      gtk_cell_renderer_get_size (info->cell, GTK_WIDGET (icon_view),
-                                  NULL, NULL, NULL,
-                                  &item->cell_boxes[info->position].width,
-                                  &item->cell_boxes[info->position].height);
+        gtk_cell_renderer_get_size(
+            info->cell, GTK_WIDGET (icon_view),
+            NULL, NULL, NULL,
+            &geometry->required_box.width,
+            &geometry->required_box.height);
 #endif
 
-      if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+        if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
         {
-          item->bounding_box.width += item->cell_boxes[info->position].width + (info->position > 0 ? priv->spacing : 0);
-          item->bounding_box.height = MAX (item->bounding_box.height, item->cell_boxes[info->position].height);
+            item->bounding_box.width += geometry->required_box.width + (info->position > 0 ? priv->spacing : 0);
+            item->bounding_box.height = MAX(item->bounding_box.height, geometry->required_box.height);
         }
-      else
+        else
         {
-          item->bounding_box.width = MAX (item->bounding_box.width, item->cell_boxes[info->position].width);
-          item->bounding_box.height += item->cell_boxes[info->position].height + (info->position > 0 ? priv->spacing : 0);
+            item->bounding_box.width = MAX(item->bounding_box.width, geometry->required_box.width);
+            item->bounding_box.height += geometry->required_box.height + (info->position > 0 ? priv->spacing : 0);
         }
     }
 
@@ -4044,17 +4044,18 @@ exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
         for (lp = priv->cell_list, i = 0; lp != NULL; lp = lp->next, ++i)
         {
             ExoIconViewCellInfo * info = EXO_ICON_VIEW_CELL_INFO (lp->data);
+            ExoIconViewCellGeometry * geometry = &item->cell_geometries[info->position];
 
             if (info->pack == (k ? GTK_PACK_START : GTK_PACK_END))
                 continue;
-            if (G_UNLIKELY(!gtk_cell_renderer_get_visible(info->cell)))
+            if (!geometry->visible)
                 continue;
 
-            GdkRectangle * cell_box = &item->cell_boxes[info->position];
+            GdkRectangle * cell_box = &geometry->required_box;
 
             if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
             {
-                cell_area.width = item->cell_boxes[info->position].width;
+                cell_area.width = cell_box->width;
                 cell_area.height = item->bounding_box.height - 2 * item_padding;
             }
             else
@@ -4063,13 +4064,11 @@ exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
                 cell_area.height = cell_max_height[i];
             }
 
-            item->cell_areas[info->position] = cell_area;
+            geometry->allocated_box = cell_area;
 
-            gint   xpad, ypad;
-            gfloat xalign, yalign;
-            gtk_cell_renderer_get_alignment(info->cell, &xalign, &yalign);
-            //gtk_cell_renderer_get_padding(info->cell, &xpad, &ypad);
-            xpad = ypad = 0;
+            gint xpad = geometry->xpad, ypad = geometry->ypad;
+            gfloat xalign = geometry->xalign, yalign = geometry->yalign;
+
             cell_box->x = cell_area.x + (rtl ? (1.0 - xalign) : xalign) * (cell_area.width - cell_box->width - (2 * xpad));
             cell_box->x = MAX (cell_box->x, 0);
             cell_box->y = cell_area.y + yalign * (cell_area.height - cell_box->height - (2 * ypad));
@@ -4091,9 +4090,10 @@ exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
         int i;
         for (i = 0; i < icon_view->priv->n_cells; i++)
         {
-            item->cell_boxes[i].x =
+            GdkRectangle * cell_box = &item->cell_geometries[i].required_box;
+            cell_box->x =
                 item->bounding_box.x + item->bounding_box.width -
-                (item->cell_boxes[i].x + item->cell_boxes[i].width - item->bounding_box.x);
+                (cell_box->x + cell_box->width - item->bounding_box.x);
         }
     }
 }
@@ -4112,14 +4112,22 @@ exo_icon_view_calculate_item_size2(ExoIconView     *icon_view,
 /*****************************************************************************/
 
 static void
-exo_icon_view_invalidate_sizes (ExoIconView *icon_view)
+_exo_icon_view_item_invalidate_size(ExoIconViewItem * item)
 {
-  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
-  {
     item->layout_done = FALSE;
-    item->rough_layout_done = FALSE;
-  })
-  exo_icon_view_queue_layout (icon_view);
+    item->faked_geometry = FALSE;
+}
+
+/*****************************************************************************/
+
+static void
+exo_icon_view_invalidate_sizes(ExoIconView *icon_view)
+{
+    FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+    {
+        _exo_icon_view_item_invalidate_size(item);
+    })
+    exo_icon_view_queue_layout(icon_view);
 }
 
 /*****************************************************************************/
@@ -4219,7 +4227,7 @@ exo_icon_view_paint_item (ExoIconView     *icon_view,
                            item->cell_boxes[info->position].width, item->cell_boxes[info->position].height);
 #endif
 
-        cell_area = item->cell_boxes[info->position];
+        cell_area = item->cell_geometries[info->position].required_box;
         cell_area.x += x - item_area.x;
         cell_area.y += y - item_area.y;
 
@@ -4438,8 +4446,7 @@ exo_icon_view_row_changed (GtkTreeModel *model,
   if (G_UNLIKELY (item->selected))
     g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
 
-  item->layout_done = FALSE;
-  item->rough_layout_done = FALSE;
+  _exo_icon_view_item_invalidate_size(item);
   exo_icon_view_queue_layout (icon_view);
   verify_items (icon_view);
 }
@@ -4460,9 +4467,8 @@ exo_icon_view_row_inserted (GtkTreeModel *model,
   /* allocate the new item */
   item = g_slice_new0 (ExoIconViewItem);
   item->iter = *iter;
-  item->layout_done = FALSE;
-  item->rough_layout_done = FALSE;
   item->index = idx;
+  _exo_icon_view_item_invalidate_size(item);
   icon_view->priv->items = g_list_insert (icon_view->priv->items, item, idx);
 
   if (icon_view->priv->update_indeces < 0 || icon_view->priv->update_indeces > idx)
@@ -4520,7 +4526,7 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
     changed = TRUE;
 
   /* release the item resources */
-  g_free (item->cell_boxes);
+  g_free (item->cell_geometries);
 
   /* drop the item from the list */
   icon_view->priv->items = g_list_delete_link (icon_view->priv->items, list);
@@ -5841,7 +5847,7 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
       /* drop all items belonging to the previous model */
       for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
         {
-          g_free (EXO_ICON_VIEW_ITEM (lp->data)->cell_boxes);
+          g_free (EXO_ICON_VIEW_ITEM (lp->data)->cell_geometries);
           g_slice_free (ExoIconViewItem, lp->data);
         }
       g_list_free (icon_view->priv->items);
@@ -5917,9 +5923,8 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
             {
               item = g_slice_new0 (ExoIconViewItem);
               item->iter = iter;
-              item->layout_done = FALSE;
-              item->rough_layout_done = FALSE;
               item->index = n++;
+              _exo_icon_view_item_invalidate_size(item);
               items = g_list_prepend (items, item);
             }
           while (gtk_tree_model_iter_next (model, &iter));
@@ -9384,26 +9389,23 @@ exo_icon_view_item_accessible_image_set_image_description (AtkImage    *image,
 }
 
 static gboolean
-get_pixbuf_box (ExoIconView     *icon_view,
-		ExoIconViewItem *item,
-		GdkRectangle    *box)
+get_pixbuf_box(ExoIconView * icon_view, ExoIconViewItem * item, GdkRectangle * box)
 {
-  GList *l;
+    GList * l;
 
-  for (l = icon_view->priv->cell_list; l; l = l->next)
+    for (l = icon_view->priv->cell_list; l; l = l->next)
     {
-      ExoIconViewCellInfo *info = l->data;
+        ExoIconViewCellInfo * info = l->data;
 
-      if (GTK_IS_CELL_RENDERER_PIXBUF (info->cell))
-	{
-	  if (info->position < item->n_cells)
-	    *box = item->cell_boxes[info->position];
-
-	  return TRUE;
-	}
+        if (GTK_IS_CELL_RENDERER_PIXBUF (info->cell))
+        {
+            if (info->position < item->n_cells)
+                *box = item->cell_geometries[info->position].required_box;
+            return TRUE;
+        }
     }
 
-  return FALSE;
+    return FALSE;
 }
 
 static gchar *
