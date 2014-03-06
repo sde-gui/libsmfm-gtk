@@ -29,6 +29,13 @@ G_BEGIN_DECLS
 
 GdkPixbuf * fm_pixbuf_create_colorized(GdkPixbuf * src, GdkColor * new_color);
 
+cairo_surface_t * fm_cairo_surface_from_pixbuf(GdkPixbuf * pixbuf, gboolean allow_caching);
+void fm_cairo_set_source_pixbuf(cairo_t         *cr,
+                                GdkPixbuf       *pixbuf,
+                                double           pixbuf_x,
+                                double           pixbuf_y,
+                                gboolean         allow_caching);
+
 G_END_DECLS
 
 #endif

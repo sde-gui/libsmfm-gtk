@@ -410,7 +410,7 @@ static void fm_cell_renderer_pixbuf_render     (GtkCellRenderer            *cell
     cairo_t *cr = gdk_cairo_create(window);
 #endif
 
-    gdk_cairo_set_source_pixbuf(cr, pixbuf, pix_rect.x, pix_rect.y);
+    fm_cairo_set_source_pixbuf(cr, pixbuf, pix_rect.x, pix_rect.y, TRUE);
     gdk_cairo_rectangle(cr, &draw_rect);
     cairo_fill(cr);
 
@@ -425,7 +425,7 @@ static void fm_cell_renderer_pixbuf_render     (GtkCellRenderer            *cell
             int x = cell_area->x + (cell_area->width  - pixbuf_width )/2;
             int y = cell_area->y + (cell_area->height - pixbuf_height)/2;
 
-            gdk_cairo_set_source_pixbuf(cr, link_icon, x, y);
+            fm_cairo_set_source_pixbuf(cr, link_icon, x, y, TRUE);
             cairo_paint(cr);
         }
     }
