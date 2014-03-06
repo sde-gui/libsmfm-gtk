@@ -267,7 +267,7 @@ static void fm_cell_renderer_pixbuf_get_size   (GtkCellRenderer            *cell
 #if GTK_CHECK_VERSION(3, 0, 0)
                                                 const
 #endif
-						 GdkRectangle               *rectangle,
+						 GdkRectangle               *cell_area,
 						 gint                       *_x_offset,
 						 gint                       *_y_offset,
 						 gint                       *_width,
@@ -277,19 +277,30 @@ static void fm_cell_renderer_pixbuf_get_size   (GtkCellRenderer            *cell
          y_offset = 0,
          width = 0,
          height = 0;
+    gint pixbuf_width, pixbuf_height;
 
     FmCellRendererPixbuf* render = FM_CELL_RENDERER_PIXBUF(cell);
-    if (render->fixed_w > 0 && render->fixed_h > 0)
-    {
-        width = render->fixed_w;
-        height = render->fixed_h;
-    }
+
+    if (render->fixed_w > 0)
+        pixbuf_width = render->fixed_w;
+    else if (render->parent.pixbuf)
+        pixbuf_width = gdk_pixbuf_get_width(render->parent.pixbuf);
     else
-    {
-        GTK_CELL_RENDERER_CLASS(fm_cell_renderer_pixbuf_parent_class)->get_size(
-            cell, widget, rectangle, &x_offset, &y_offset, &width, &height
-        );
-    }
+        pixbuf_width = 0;
+
+    if (render->fixed_h > 0)
+        pixbuf_height = render->fixed_h;
+    else if (render->parent.pixbuf)
+        pixbuf_height = gdk_pixbuf_get_height(render->parent.pixbuf);
+    else
+        pixbuf_height = 0;
+
+    width  = (gint) cell->xpad * 2 + pixbuf_width;
+    height = (gint) cell->ypad * 2 + pixbuf_height;
+
+    /* TODO: use cell_area to calculate x_offset and y_offset */
+    x_offset = 0;
+    y_offset = 0;
 
     if (_x_offset) *_x_offset = x_offset;
     if (_y_offset) *_y_offset = y_offset;
@@ -316,7 +327,7 @@ static void fm_cell_renderer_pixbuf_render     (GtkCellRenderer            *cell
 #endif
 {
     FmCellRendererPixbuf * render = FM_CELL_RENDERER_PIXBUF(cell);
-    GtkCellRendererPixbuf * _render = (GtkCellRendererPixbuf *) render;
+    GtkCellRendererPixbuf * _render = &render->parent;
 
     GdkPixbuf * pixbuf;
     GdkPixbuf * original_pixbuf;
@@ -335,19 +346,19 @@ static void fm_cell_renderer_pixbuf_render     (GtkCellRenderer            *cell
     if(flags & GTK_CELL_RENDERER_PRELIT)
         flags &= ~GTK_CELL_RENDERER_PRELIT;
 
-#define Pi(expr) g_print("%s = %d\n", (#expr), (int) (expr))
-
     GdkRectangle pix_rect;
-    fm_cell_renderer_pixbuf_get_size(cell, widget, cell_area,
-        &pix_rect.x,
-        &pix_rect.y,
-        &pix_rect.width,
-        &pix_rect.height);
+    pix_rect.x = 0;
+    pix_rect.y = 0;
+    pix_rect.width = gdk_pixbuf_get_width(pixbuf);
+    pix_rect.height = gdk_pixbuf_get_height(pixbuf);
 
     pix_rect.x += cell_area->x + cell->xpad;
     pix_rect.y += cell_area->y + cell->ypad;
     pix_rect.width  -= cell->xpad * 2;
     pix_rect.height -= cell->ypad * 2;
+
+    pix_rect.x += cell->xalign * (cell_area->width - pix_rect.width);
+    pix_rect.y += cell->yalign * (cell_area->height - pix_rect.height);
 
     GdkRectangle draw_rect;
     if (!gdk_rectangle_intersect(cell_area, &pix_rect, &draw_rect) ||
