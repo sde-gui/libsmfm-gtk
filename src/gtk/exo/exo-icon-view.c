@@ -253,6 +253,9 @@ static gboolean             exo_icon_view_real_activate_cursor_item      (ExoIco
 static gboolean             exo_icon_view_real_start_interactive_search  (ExoIconView            *icon_view);
 static void                 exo_icon_view_adjustment_changed             (GtkAdjustment          *adjustment,
                                                                           ExoIconView            *icon_view);
+
+static GdkRectangle         exo_icon_view_get_item_animated_bounding_box (ExoIconView            *icon_view,
+                                                                          ExoIconViewItem        *item);
 static gboolean             exo_icon_view_layout                         (ExoIconView            *icon_view);
 static void                 exo_icon_view_paint_item                     (ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *item,
@@ -503,6 +506,12 @@ struct _ExoIconViewItem
   gint n_cells;
   ExoIconViewCellGeometry * cell_geometries;
 
+  long animation_base_time;
+  int  animation_base_x;
+  int  animation_base_y;
+  int  animation_final_x;
+  int  animation_final_y;
+
   gint index;
 
   guint row : ((sizeof (guint) / 2) * 8) - 1;
@@ -528,6 +537,7 @@ struct _ExoIconViewPrivate
   GList *children;
 
   GtkTreeModel *model;
+  guint time_of_last_model_set;
 
   GList *items;
 
@@ -544,6 +554,11 @@ struct _ExoIconViewPrivate
   long vadjustment_value;
 
   guint delayed_expose_timeout_id;
+
+  guint animation_handler;
+  gboolean animation_in_progress;
+  long animation_time;
+  long animation_duration;
 
   gint layout_idle_id;
   gboolean layout_defers_redraw;
@@ -663,21 +678,23 @@ struct _ExoIconViewPrivate
 
 
 #define FOR_EACH_VIEW_ITEM(item, items, code) \
-GList * iterator_##item; \
+{GList * iterator_##item; \
 for (iterator_##item = (items); iterator_##item; iterator_##item = iterator_##item->next) \
 { \
     ExoIconViewItem * item = (ExoIconViewItem *) iterator_##item->data; \
     code \
-}
+}}
 
 static GdkRectangle item_get_bounding_box(const ExoIconViewItem * item)
 {
-    if (item)
-        return item->bounding_box;
-    GdkRectangle r = {0, 0, 0, 0};
-    return r;
-}
+    if (!item)
+    {
+        GdkRectangle r = {0, 0, 0, 0};
+        return r;
+    }
 
+    return item->bounding_box;
+}
 
 static guint icon_view_signals[LAST_SIGNAL];
 
@@ -1299,6 +1316,9 @@ exo_icon_view_init (ExoIconView *icon_view)
   icon_view->priv->item_padding = 6;
 //icon_view->priv->item_padding = 0;
 
+  //icon_view->priv->animation_duration = G_USEC_PER_SEC * 0.4;
+  icon_view->priv->animation_duration = 0;
+
   icon_view->priv->enable_search = TRUE;
   icon_view->priv->search_column = -1;
   icon_view->priv->search_equal_func = exo_icon_view_search_equal_func;
@@ -1906,7 +1926,7 @@ static void exo_icon_view_delayed_expose(ExoIconView * icon_view)
     ExoIconViewPrivate * priv = icon_view->priv;
 
     if (priv->delayed_expose_timeout_id == 0)
-        icon_view->priv->delayed_expose_timeout_id =
+        priv->delayed_expose_timeout_id =
             g_timeout_add_full(G_PRIORITY_DEFAULT, 500, delayed_expose_callback, icon_view, delayed_expose_destroy_callback);
 }
 
@@ -1922,6 +1942,45 @@ static void exo_icon_view_force_draw(ExoIconView * icon_view)
         g_source_remove(icon_view->priv->delayed_expose_timeout_id);
     else
         gtk_widget_queue_draw(GTK_WIDGET(icon_view));
+}
+
+static gboolean animation_handler(gpointer user_data)
+{
+    ExoIconView * icon_view = (ExoIconView *) user_data;
+    ExoIconViewPrivate * priv = icon_view->priv;
+
+    if (!priv->animation_in_progress)
+        return FALSE;
+
+    if (priv->bin_window)
+    {
+        GdkRectangle r;
+        r.x = r.y = 0;
+        r.width = r.height = G_MAXINT;
+        gdk_window_invalidate_rect(priv->bin_window, &r, TRUE);
+        gdk_window_process_updates(priv->bin_window, TRUE);
+    }
+
+    return TRUE;
+}
+
+static void animation_handler_destroy(gpointer user_data)
+{
+    ExoIconView * icon_view = (ExoIconView *) user_data;
+    ExoIconViewPrivate * priv = icon_view->priv;
+    priv->animation_handler = 0;
+}
+
+static void
+exo_icon_view_start_animation(ExoIconView * icon_view)
+{
+    ExoIconViewPrivate * priv = icon_view->priv;
+    if (!priv->animation_in_progress)
+        return;
+
+    if (priv->animation_handler == 0)
+        priv->animation_handler =
+            g_timeout_add_full(G_PRIORITY_DEFAULT, 30, animation_handler, icon_view, animation_handler_destroy);
 }
 
 
@@ -1990,61 +2049,62 @@ exo_icon_view_expose_event (GtkWidget      *widget,
       gtk_tree_path_free (path);
     }
 
-#if GTK_CHECK_VERSION(3, 0, 0)
-  cairo_save (cr);
-  gtk_cairo_transform_to_window (cr, widget, priv->bin_window);
-#else
   event_area = event->area;
 
   /* determine the last interesting coordinate (depending on the layout mode) */
   event_area_last = (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
                   ? event_area.y + event_area.height
                   : event_area.x + event_area.width;
-#endif
 
-  /* paint all items that are affected by the expose event */
-  FOR_EACH_VIEW_ITEM(item, priv->items,
-  {
-      if (!item->sizes_valid)
-        exo_icon_view_queue_layout(icon_view);
+    priv->animation_time = g_get_monotonic_time();
 
-      /* check if this item is in the visible area */
-      GdkRectangle item_area = item_get_bounding_box(item);
-#if !GTK_CHECK_VERSION(3, 0, 0)
-      if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
+    gboolean animation_seems_to_be_in_progress = priv->animation_in_progress;
+    priv->animation_in_progress = FALSE;
+
+    /* paint all items that are affected by the expose event */
+    FOR_EACH_VIEW_ITEM(item, priv->items,
+    {
+        if (!item->sizes_valid)
+            exo_icon_view_queue_layout(icon_view);
+
+        /* check if this item is in the visible area */
+        GdkRectangle item_area = exo_icon_view_get_item_animated_bounding_box(icon_view, item);
+        if (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS)
         {
-          if (item_area.y > event_area_last)
-            break;
-          else if (item_area.y + item_area.height < event_area.y)
-            continue;
+            if (item_area.y > event_area_last)
+            {
+                if (!animation_seems_to_be_in_progress)
+                    break;
+                else
+                    continue;
+            }
+            else if (item_area.y + item_area.height < event_area.y)
+            {
+                continue;
+            }
         }
-      else
+        else
         {
-          if (item_area.x > event_area_last)
-            break;
-          else if (item_area.x + item_area.width < event_area.x)
-            continue;
+            if (item_area.x > event_area_last)
+            {
+                if (!animation_seems_to_be_in_progress)
+                    break;
+                else
+                    continue;
+            }
+            else if (item_area.x + item_area.width < event_area.x)
+            {
+                continue;
+            }
         }
 
-      /* check if this item needs an update */
-      if (G_LIKELY (gdk_region_rect_in (event->region, &item_area) != GDK_OVERLAP_RECTANGLE_OUT))
+        /* check if this item needs an update */
+        if (G_LIKELY (gdk_region_rect_in (event->region, &item_area) != GDK_OVERLAP_RECTANGLE_OUT))
         {
-          exo_icon_view_paint_item (icon_view, item, &event_area, event->window, item_area.x, item_area.y, TRUE);
-#else
-      cairo_save (cr);
-      cairo_rectangle (cr, item_area.x, item_area.y, item_area.width, item_area.height);
-      cairo_clip (cr);
-
-      if (gdk_cairo_get_clip_rectangle (cr, NULL))
-        {
-          exo_icon_view_paint_item (icon_view, item, &item_area, cr, item_area.x, item_area.y, TRUE);
-#endif
-          if (G_UNLIKELY (dest_index == item->index))
-            dest_item = item;
+            exo_icon_view_paint_item (icon_view, item, &event_area, event->window, item_area.x, item_area.y, TRUE);
+            if (G_UNLIKELY (dest_index == item->index))
+                dest_item = item;
         }
-#if GTK_CHECK_VERSION(3, 0, 0)
-      cairo_restore (cr);
-#endif
    })
 
   /* draw the drag indicator */
@@ -2120,6 +2180,8 @@ exo_icon_view_expose_event (GtkWidget      *widget,
 #else
   (*GTK_WIDGET_CLASS (exo_icon_view_parent_class)->expose_event) (widget, event);
 #endif
+
+  exo_icon_view_start_animation(icon_view);
 
   return FALSE;
 }
@@ -3467,6 +3529,55 @@ exo_icon_view_set_adjustment_upper (GtkAdjustment *adj,
 
 /*****************************************************************************/
 
+static void
+exo_icon_view_get_item_animated_position(ExoIconView * icon_view, ExoIconViewItem * item, int * x, int * y)
+{
+    ExoIconViewPrivate * priv = icon_view->priv;
+
+    long animation_duration = priv->animation_duration;
+    long time_offset = priv->animation_time - item->animation_base_time;
+
+    if (item->animation_base_time == 0)
+    {
+        *x = item->bounding_box.x;
+        *y = item->bounding_box.y;
+        return;
+    }
+
+    if (time_offset > animation_duration || animation_duration < 1)
+    {
+        *x = item->animation_final_x;
+        *y = item->animation_final_y;
+        return;
+    }
+
+    double offset = (double) time_offset / (double) animation_duration;
+    offset = MAX(offset, 0.0);
+    offset = pow(offset, 0.7);
+
+    *x = item->animation_base_x + offset * (item->animation_final_x - item->animation_base_x);
+    *y = item->animation_base_y + offset * (item->animation_final_y - item->animation_base_y);
+
+    priv->animation_in_progress = TRUE;
+}
+
+static GdkRectangle exo_icon_view_get_item_animated_bounding_box(ExoIconView * icon_view, ExoIconViewItem * item)
+{
+    if (!item)
+    {
+        GdkRectangle r = {0, 0, 0, 0};
+        return r;
+    }
+
+    GdkRectangle r;
+    r.width = item->bounding_box.width;
+    r.height = item->bounding_box.height;
+    exo_icon_view_get_item_animated_position(icon_view, item, &r.x, &r.y);
+    return r;
+}
+
+/*****************************************************************************/
+
 static GList*
 exo_icon_view_layout_single_line (ExoIconView *icon_view,
                                  GList       *first_item,
@@ -3552,16 +3663,12 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
             item->col = line;
         }
 
-        if (item->positions_valid)
+        if (item->bounding_box.x != bounding_box_x || item->bounding_box.y != bounding_box_y)
         {
-            if (item->bounding_box.x != bounding_box_x || item->bounding_box.y != bounding_box_y)
-            {
-                item->positions_valid = FALSE;
-            }
+            item->positions_valid = FALSE;
+            item->bounding_box.x = bounding_box_x;
+            item->bounding_box.y = bounding_box_y;
         }
-
-        item->bounding_box.x = bounding_box_x;
-        item->bounding_box.y = bounding_box_y;
 
         u = current_u_width - (priv->margin + focus_width);
 
@@ -3736,6 +3843,28 @@ exo_icon_view_layout (ExoIconView *icon_view)
     long item_u_width = ROWS ? max_item_width : max_item_height;
 
     gboolean redraw_queued = exo_icon_view_layout_lines(icon_view, item_u_width);
+
+    /*
+        Prepare items for animation, but only if some time passed after model being set.
+    */
+    priv->animation_time = g_get_monotonic_time();
+    gboolean allow_animation = (priv->animation_time - priv->time_of_last_model_set) > G_USEC_PER_SEC * 1.0;
+    FOR_EACH_VIEW_ITEM(item, priv->items,
+    {
+        if (allow_animation)
+        {
+            exo_icon_view_get_item_animated_position(icon_view, item,
+                &item->animation_base_x, &item->animation_base_y);
+        }
+        else
+        {
+            item->animation_base_x = item->bounding_box.x;
+            item->animation_base_y = item->bounding_box.y;
+        }
+        item->animation_final_x = item->bounding_box.x;
+        item->animation_final_y = item->bounding_box.y;
+        item->animation_base_time = priv->animation_time;
+    })
 
     exo_icon_view_set_adjustment_upper (priv->hadjustment, priv->width);
     exo_icon_view_set_adjustment_upper (priv->vadjustment, priv->height);
@@ -5841,6 +5970,8 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
       gtk_adjustment_set_value(icon_view->priv->hadjustment, 0);
   if (icon_view->priv->vadjustment)
       gtk_adjustment_set_value(icon_view->priv->vadjustment, 0);
+
+  icon_view->priv->time_of_last_model_set = g_get_monotonic_time();
 }
 
 
