@@ -776,9 +776,7 @@ exo_icon_view_class_init (ExoIconViewClass *klass)
   /**
    * ExoIconView:columns:
    *
-   * The columns property contains the number of the columns in which the
-   * items should be displayed. If it is -1, the number of columns will
-   * be chosen automatically to fill the available area.
+   * The columns property contains the number of the columns in the icon view.
    *
    * Since: 0.3.1
    **/
@@ -788,7 +786,7 @@ exo_icon_view_class_init (ExoIconViewClass *klass)
                                                      _("Number of columns"),
                                                      _("Number of columns to display"),
                                                      -1, G_MAXINT, -1,
-                                                     EXO_PARAM_READWRITE));
+                                                     EXO_PARAM_READABLE));
 
   /**
    * ExoIconView:enable-search:
@@ -1499,10 +1497,6 @@ exo_icon_view_set_property (GObject      *object,
     {
     case PROP_COLUMN_SPACING:
       exo_icon_view_set_column_spacing (icon_view, g_value_get_int (value));
-      break;
-
-    case PROP_COLUMNS:
-      exo_icon_view_set_columns (icon_view, g_value_get_int (value));
       break;
 
     case PROP_ENABLE_SEARCH:
@@ -6485,35 +6479,6 @@ exo_icon_view_get_columns (const ExoIconView *icon_view)
 }
 
 
-
-/**
- * exo_icon_view_set_columns:
- * @icon_view : a #ExoIconView
- * @columns   : the number of columns
- *
- * Sets the ::columns property which determines in how
- * many columns the icons are arranged. If @columns is
- * -1, the number of columns will be chosen automatically
- * to fill the available area.
- *
- * Since: 0.3.1
- */
-void
-exo_icon_view_set_columns (ExoIconView *icon_view,
-                           gint         columns)
-{
-  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
-
-  if (G_LIKELY (icon_view->priv->columns != columns))
-    {
-      icon_view->priv->columns = columns;
-
-      exo_icon_view_stop_editing (icon_view, TRUE);
-      exo_icon_view_queue_layout (icon_view);
-
-      g_object_notify (G_OBJECT (icon_view), "columns");
-    }
-}
 
 
 

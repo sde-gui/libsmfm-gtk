@@ -191,8 +191,7 @@ void                  exo_icon_view_set_orientation           (ExoIconView      
                                                                GtkOrientation            orientation);
 
 gint                  exo_icon_view_get_columns               (const ExoIconView        *icon_view);
-void                  exo_icon_view_set_columns               (ExoIconView              *icon_view,
-                                                               gint                      columns);
+
 
 gint                  exo_icon_view_get_item_width            (const ExoIconView        *icon_view);
 void                  exo_icon_view_set_item_width            (ExoIconView              *icon_view,
