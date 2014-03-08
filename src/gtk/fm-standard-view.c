@@ -2,7 +2,8 @@
  *      fm-standard-view.c
  *
  *      Copyright 2009 - 2012 Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
- *      Copyright 2012-2013 Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
+ *      Copyright 2012 - 2013 Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
+ *      Copyright 2013 - 2014 Vadim Ushakov <igeekless@gmail.com>
  *
  *      This program is free software; you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License as published by
@@ -63,6 +64,7 @@ typedef struct _ModeSettings
     FmViewType type;
 
     long icon_size;
+    const char * icon_size_id;
 
     long   item_width_min;
     double item_width_mult;
@@ -91,7 +93,6 @@ typedef struct _ModeSettings
     gboolean force_thumbnails;
 } ModeSettings;
 
-ModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
 
 struct _FmStandardView
 {
@@ -151,6 +152,8 @@ struct _FmStandardViewClass
     /* void (*column_widths_changed)(); */
 };
 
+static ModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
+
 static void fm_standard_view_dispose(GObject *object);
 
 static void fm_standard_view_view_init(FmFolderViewInterface* iface);
@@ -168,9 +171,7 @@ static void on_sel_changed(GObject* obj, FmStandardView* fv);
 static void on_dnd_src_data_get(FmDndSrc* ds, FmStandardView* fv);
 
 static void on_single_click_changed(FmConfig* cfg, FmStandardView* fv);
-static void on_big_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
-static void on_small_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
-static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv);
+static void on_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
 
 static void apply_mode_settings(FmStandardView* self);
 
@@ -236,6 +237,72 @@ static void on_tree_view_row_activated(GtkTreeView* tv, GtkTreePath* path, GtkTr
 
 static void fm_standard_view_init(FmStandardView *self)
 {
+    ModeSettings m1 = {
+        .type = FmViewType_Icon,
+        .icon_size_id = "big_icon",
+        .horizontal_orientation = FALSE,
+        .icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS,
+        .text_alignment = PANGO_ALIGN_CENTER,
+        .text_max_height = -2,
+        .item_width_min = 64,
+        .item_width_mult = 1.5,
+        .row_spacing_min = 5,
+        .row_spacing_mult = 0.1,
+        .col_spacing_min = 5,
+        .col_spacing_mult = 0.1,
+        .padding_min = 2,
+        .padding_mult = 0.06,
+        .cell_spacing = 1,
+        .force_thumbnails = FALSE,
+    };
+    mode_settings[FM_FV_ICON_VIEW] = m1;
+
+    ModeSettings m2 = {
+        .type = FmViewType_Icon,
+        .icon_size_id = "thumbnail",
+        .horizontal_orientation = FALSE,
+        .icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS,
+        .text_alignment = PANGO_ALIGN_CENTER,
+        .text_max_height = -1,
+        .item_width_min = 96,
+        .item_width_mult = 1,
+        .row_spacing_min = 5,
+        .row_spacing_mult = 0.1,
+        .col_spacing_min = 5,
+        .col_spacing_mult = 0.1,
+        .padding_min = 2,
+        .padding_mult = 0.06,
+        .cell_spacing = 1,
+        .force_thumbnails = TRUE
+    };
+    mode_settings[FM_FV_THUMBNAIL_VIEW] = m2;
+
+    ModeSettings m3 = {
+        .type = FmViewType_Icon,
+        .icon_size_id = "small_icon",
+        .horizontal_orientation = TRUE,
+        .icon_layout_mode = EXO_ICON_VIEW_LAYOUT_COLS,
+        .text_alignment = PANGO_ALIGN_LEFT,
+        .item_width_min = 0,
+        .item_width_mult = 0,
+        .row_spacing_min = 1,
+        .row_spacing_mult = 0.1,
+        .col_spacing_min = 1,
+        .col_spacing_mult = 0.1,
+        .padding_min = 0,
+        .padding_mult = 0.06,
+        .cell_spacing = 1,
+        .force_thumbnails = FALSE
+    };
+    mode_settings[FM_FV_COMPACT_VIEW] = m3;
+
+    ModeSettings m4 = {
+        .type = FmViewType_Tree,
+        .icon_size_id = "small_icon",
+        .force_thumbnails = FALSE
+    };
+    mode_settings[FM_FV_LIST_VIEW] = m4;
+
     gtk_scrolled_window_set_hadjustment((GtkScrolledWindow*)self, NULL);
     gtk_scrolled_window_set_vadjustment((GtkScrolledWindow*)self, NULL);
     gtk_scrolled_window_set_policy((GtkScrolledWindow*)self, GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -472,31 +539,19 @@ static void apply_icon_size(FmStandardView* fv, guint icon_size)
 
 static void update_icon_size(FmStandardView* fv)
 {
-    guint icon_size = 0;
+    guint icon_size = 32;
 
-    if (fv->mode == FM_FV_COMPACT_VIEW)
+    if (strcmp(fv->mode_settings.icon_size_id, "small_icon") == 0)
         icon_size = fm_config->small_icon_size;
-    else if (fv->mode == FM_FV_ICON_VIEW)
+    else if (strcmp(fv->mode_settings.icon_size_id, "big_icon") == 0)
         icon_size = fm_config->big_icon_size;
-    else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
+    else if (strcmp(fv->mode_settings.icon_size_id, "thumbnail") == 0)
         icon_size = fm_config->thumbnail_size;
-    else if (fv->mode == FM_FV_LIST_VIEW)
-        icon_size = fm_config->small_icon_size;
 
     apply_icon_size(fv, icon_size);
 }
 
-static void on_big_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
-{
-    update_icon_size(fv);
-}
-
-static void on_small_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
-{
-    update_icon_size(fv);
-}
-
-static void on_thumbnail_size_changed(FmConfig* cfg, FmStandardView* fv)
+static void on_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
 {
     update_icon_size(fv);
 }
@@ -1063,7 +1118,6 @@ static inline void create_list_view(FmStandardView* fv, GList* sels)
     if(fv->renderer_pixbuf)
         g_object_unref(fv->renderer_pixbuf);
     fv->renderer_pixbuf = g_object_ref_sink(fm_cell_renderer_pixbuf_new());
-    fv->icon_size_changed_handler = g_signal_connect(fm_config, "changed::small_icon_size", G_CALLBACK(on_small_icon_size_changed), fv);
 
     update_icon_size(fv);
 
@@ -1223,86 +1277,17 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
         fv->show_full_names_handler = 0;
     }
 
-
-    mode_settings[FM_FV_ICON_VIEW].type = FmViewType_Icon;
-    mode_settings[FM_FV_ICON_VIEW].horizontal_orientation = FALSE;
-    mode_settings[FM_FV_ICON_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS;
-    mode_settings[FM_FV_ICON_VIEW].text_alignment = PANGO_ALIGN_CENTER;
-    mode_settings[FM_FV_ICON_VIEW].text_max_height = -2;
-    mode_settings[FM_FV_ICON_VIEW].item_width_min = 64;
-    mode_settings[FM_FV_ICON_VIEW].item_width_mult = 1.5;
-    mode_settings[FM_FV_ICON_VIEW].row_spacing_min = 5;
-    mode_settings[FM_FV_ICON_VIEW].row_spacing_mult = 0.1;
-    mode_settings[FM_FV_ICON_VIEW].col_spacing_min = 5;
-    mode_settings[FM_FV_ICON_VIEW].col_spacing_mult = 0.1;
-    mode_settings[FM_FV_ICON_VIEW].padding_min = 2;
-    mode_settings[FM_FV_ICON_VIEW].padding_mult = 0.06;
-    mode_settings[FM_FV_ICON_VIEW].cell_spacing = 1;
-    mode_settings[FM_FV_ICON_VIEW].force_thumbnails = FALSE;
-
-    mode_settings[FM_FV_THUMBNAIL_VIEW].type = FmViewType_Icon;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].horizontal_orientation = FALSE;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_ROWS;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].text_alignment = PANGO_ALIGN_CENTER;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].text_max_height = -1;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].item_width_min = 96;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].item_width_mult = 1;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].row_spacing_min = 5;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].row_spacing_mult = 0.1;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].col_spacing_min = 5;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].col_spacing_mult = 0.1;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].padding_min = 2;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].padding_mult = 0.06;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].cell_spacing = 1;
-    mode_settings[FM_FV_THUMBNAIL_VIEW].force_thumbnails = TRUE;
-
-    mode_settings[FM_FV_COMPACT_VIEW].type = FmViewType_Icon;
-    mode_settings[FM_FV_COMPACT_VIEW].horizontal_orientation = TRUE;
-    mode_settings[FM_FV_COMPACT_VIEW].icon_layout_mode = EXO_ICON_VIEW_LAYOUT_COLS;
-    mode_settings[FM_FV_COMPACT_VIEW].text_alignment = PANGO_ALIGN_LEFT;
-    mode_settings[FM_FV_COMPACT_VIEW].item_width_min = 0;
-    mode_settings[FM_FV_COMPACT_VIEW].item_width_mult = 0;
-    mode_settings[FM_FV_COMPACT_VIEW].row_spacing_min = 1;
-    mode_settings[FM_FV_COMPACT_VIEW].row_spacing_mult = 0.1;
-    mode_settings[FM_FV_COMPACT_VIEW].col_spacing_min = 1;
-    mode_settings[FM_FV_COMPACT_VIEW].col_spacing_mult = 0.1;
-    mode_settings[FM_FV_COMPACT_VIEW].padding_min = 0;
-    mode_settings[FM_FV_COMPACT_VIEW].padding_mult = 0.06;
-    mode_settings[FM_FV_COMPACT_VIEW].cell_spacing = 1;
-    mode_settings[FM_FV_COMPACT_VIEW].force_thumbnails = FALSE;
-
-    mode_settings[FM_FV_LIST_VIEW].type = FmViewType_Tree;
-    mode_settings[FM_FV_LIST_VIEW].force_thumbnails = FALSE;
-
     fv->mode = mode;
 
     fv->mode_settings = mode_settings[mode];
 
-
-    if(fv->mode == FM_FV_COMPACT_VIEW)
+    if (fv->mode_settings.icon_size_id)
     {
+        char * s_changed_icon_size = g_strdup_printf("changed::%s_size", fv->mode_settings.icon_size_id);
         fv->icon_size_changed_handler = g_signal_connect(fm_config,
-            "changed::small_icon_size", G_CALLBACK(on_small_icon_size_changed), fv);
+            s_changed_icon_size, G_CALLBACK(on_icon_size_changed), fv);
+        g_free(s_changed_icon_size);
     }
-    else
-    {
-        if (fv->show_full_names_handler == 0)
-            fv->show_full_names_handler = g_signal_connect(fm_config,
-                "changed::show_full_names", G_CALLBACK(on_show_full_names_changed), fv);
-
-        if (fv->mode == FM_FV_ICON_VIEW)
-        {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config,
-                "changed::big_icon_size", G_CALLBACK(on_big_icon_size_changed), fv);
-        }
-        else if (fv->mode == FM_FV_THUMBNAIL_VIEW)
-        {
-            fv->icon_size_changed_handler = g_signal_connect(fm_config,
-                "changed::thumbnail_size", G_CALLBACK(on_thumbnail_size_changed), fv);
-        }
-    }
-
-
 
     switch(fv->mode_settings.type)
     {
