@@ -244,22 +244,15 @@ void                  exo_icon_view_icon_to_widget_coords     (const ExoIconView
                                                                gint                     *wx,
                                                              gint                     *wy);
 
-GtkTreePath          *exo_icon_view_get_path_at_pos           (const ExoIconView        *icon_view,
+GtkTreePath          *exo_icon_view_get_path_at_pos           (ExoIconView        *icon_view,
                                                                gint                      x,
                                                                gint                      y);
-gboolean              exo_icon_view_get_item_at_pos           (const ExoIconView        *icon_view,
+gboolean              exo_icon_view_get_item_at_pos           (ExoIconView        *icon_view,
                                                                gint                      x,
                                                                gint                      y,
                                                                GtkTreePath             **path,
                                                                GtkCellRenderer         **cell);
 
-gboolean              exo_icon_view_get_visible_range         (const ExoIconView        *icon_view,
-                                                               GtkTreePath             **start_path,
-                                                               GtkTreePath             **end_path);
-
-void                  exo_icon_view_selected_foreach          (ExoIconView              *icon_view,
-                                                               ExoIconViewForeachFunc    func,
-                                                               gpointer                  data);
 void                  exo_icon_view_select_path               (ExoIconView              *icon_view,
                                                                GtkTreePath              *path);
 void                  exo_icon_view_unselect_path             (ExoIconView              *icon_view,

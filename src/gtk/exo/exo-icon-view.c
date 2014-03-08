@@ -318,7 +318,7 @@ static void                 exo_icon_view_unselect_item                  (ExoIco
 static gboolean             exo_icon_view_select_all_between             (ExoIconView            *icon_view,
                                                                           ExoIconViewItem        *anchor,
                                                                           ExoIconViewItem        *cursor);
-static ExoIconViewItem *    exo_icon_view_get_item_at_coords             (const ExoIconView      *icon_view,
+static ExoIconViewItem *    exo_icon_view_get_item_at_coords             (ExoIconView      *icon_view,
                                                                           gint                    x,
                                                                           gint                    y,
                                                                           ExoIconViewCellInfo   **cell_at_pos);
@@ -468,6 +468,8 @@ static void update_indeces(const ExoIconView * icon_view);
 static void exo_icon_view_queue_draw(ExoIconView * icon_view);
 static void exo_icon_view_force_draw(ExoIconView * icon_view);
 
+#include "exo-icon-view-item-container.c"
+
 struct _ExoIconViewCellInfo
 {
   GtkCellRenderer      *cell;
@@ -539,7 +541,7 @@ struct _ExoIconViewPrivate
   GtkTreeModel *model;
   guint time_of_last_model_set;
 
-  GList *items;
+  ICollection items;
 
   GtkAdjustment *hadjustment;
   GtkAdjustment *vadjustment;
@@ -676,14 +678,41 @@ struct _ExoIconViewPrivate
   gint style_focus_padding;
 };
 
+/*****************************************************************************/
 
-#define FOR_EACH_VIEW_ITEM(item, items, code) \
-{GList * iterator_##item; \
-for (iterator_##item = (items); iterator_##item; iterator_##item = iterator_##item->next) \
-{ \
-    ExoIconViewItem * item = (ExoIconViewItem *) iterator_##item->data; \
-    code \
-}}
+static void verify_items(const ExoIconView * icon_view)
+{
+    int i = 0;
+    FOR_EACH_ITEM(icon_view->priv->items, item,
+    {
+        if (item->index != i)
+          g_error ("List item does not match its index: "
+                   "item index %d and list index %d\n", item->index, i);
+        i++;
+    })
+}
+
+static void update_indeces(const ExoIconView * icon_view)
+{
+    if (icon_view->priv->update_indeces < 0)
+      return;
+
+    int idx = icon_view->priv->update_indeces;
+    GList * list = g_list_nth(icon_view->priv->items.items, idx);
+    for (; list; list = list->next, idx++)
+    {
+        ExoIconViewItem *item;
+        item = list->data;
+        item->index = idx;
+    }
+
+    icon_view->priv->update_indeces = -1;
+
+    verify_items(icon_view);
+}
+
+/*****************************************************************************/
+
 
 static GdkRectangle item_get_bounding_box(const ExoIconViewItem * item)
 {
@@ -2062,7 +2091,7 @@ exo_icon_view_expose_event (GtkWidget      *widget,
     priv->animation_in_progress = FALSE;
 
     /* paint all items that are affected by the expose event */
-    FOR_EACH_VIEW_ITEM(item, priv->items,
+    FOR_EACH_ITEM(priv->items, item,
     {
         if (!item->sizes_valid)
             exo_icon_view_queue_layout(icon_view);
@@ -3048,7 +3077,7 @@ exo_icon_view_start_rubberbanding (ExoIconView  *icon_view,
   /* be sure to disable any previously active rubberband */
   exo_icon_view_stop_rubberbanding (icon_view);
 
-  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+  FOR_EACH_ITEM(icon_view->priv->items, item,
   {
       item->selected_before_rubberbanding = item->selected;
   })
@@ -3119,7 +3148,7 @@ exo_icon_view_update_rubberband_selection (ExoIconView *icon_view)
   GdkRectangle test_box = {x, y, width, height};
 
   /* check all items */
-  FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+  FOR_EACH_ITEM(icon_view->priv->items, item,
   {
       is_in = exo_icon_view_item_hit_test (icon_view, item, &test_box, NULL);
 
@@ -3194,18 +3223,18 @@ exo_icon_view_item_hit_test (const ExoIconView          *icon_view,
 
 
 static ExoIconViewItem*
-exo_icon_view_get_item_at_coords (const ExoIconView    *icon_view,
+exo_icon_view_get_item_at_coords (ExoIconView    *icon_view,
                                   gint                  x,
                                   gint                  y,
                                   ExoIconViewCellInfo **cell_at_pos)
 {
-    const ExoIconViewPrivate *priv = icon_view->priv;
+    ExoIconViewPrivate *priv = icon_view->priv;
 
     GdkRectangle test_box = {x, y, 1, 1};
 
     update_indeces(icon_view);
 
-    FOR_EACH_VIEW_ITEM(item, priv->items,
+    FOR_EACH_ITEM(priv->items, item,
     {
         if (exo_icon_view_item_hit_test(icon_view, item, &test_box, cell_at_pos))
             return item;
@@ -3223,7 +3252,7 @@ exo_icon_view_unselect_all_internal (ExoIconView  *icon_view)
 
   if (G_LIKELY (icon_view->priv->selection_mode != GTK_SELECTION_NONE))
     {
-      FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+      FOR_EACH_ITEM(icon_view->priv->items, item,
       {
           if (item->selected)
             {
@@ -3578,9 +3607,9 @@ static GdkRectangle exo_icon_view_get_item_animated_bounding_box(ExoIconView * i
 
 /*****************************************************************************/
 
-static GList*
-exo_icon_view_layout_single_line (ExoIconView *icon_view,
-                                 GList       *first_item,
+static ITERATOR
+exo_icon_view_layout_single_line(ExoIconView *icon_view,
+                                 ITERATOR     first_item,
                                  long         item_u_width,
                                  long         line,
                                  long        *v,
@@ -3589,8 +3618,6 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
                                  gboolean    *redraw_queued)
 {
   ExoIconViewPrivate *priv = icon_view->priv;
-  GList              *last_item;
-  GList              *items = first_item;
   gint                focus_width = icon_view->priv->style_focus_line_width;
   gint                posl = 0;
   gint                i;
@@ -3621,10 +3648,10 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
     gint u = priv->margin + focus_width;
     gint current_u_width = 2 * (priv->margin + focus_width);
 
-    for (items = first_item; items != NULL; items = items->next)
-    {
-        ExoIconViewItem * item = EXO_ICON_VIEW_ITEM(items->data);
+    ITERATOR I = first_item;
 
+    ITERATE_FORWARD(I, item,
+    {
         gint poslspan;
         if (ROWS)
         {
@@ -3639,7 +3666,7 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
             current_u_width += item->bounding_box.height + posl_spacing + 2 * focus_width;
         }
 
-        if (G_LIKELY (items != first_item))
+        if (G_LIKELY (!ITERATOR_EQ(I, first_item)))
         {
             if (current_u_width > allocation_u_width)
                 break;
@@ -3647,7 +3674,7 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
                 break;
         }
 
-        long bounding_box_x, bounding_box_y;
+        long bounding_box_x; long bounding_box_y;
         if (ROWS)
         {
             bounding_box_x = rtl ? allocation_u_width - item->bounding_box.width - u : u;
@@ -3682,14 +3709,16 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
 
         if (current_u_width > *maximum_u_width)
             *maximum_u_width = current_u_width;
-    }
+    })
 
-    last_item = items;
+    ITERATOR last_item = I;
 
     /* Now go through the row again and align the icons */
-    for (items = first_item; items != last_item; items = items->next)
+    I = first_item;
+    ITERATE_FORWARD(I, item,
     {
-        ExoIconViewItem * item = EXO_ICON_VIEW_ITEM (items->data);
+        if (ITERATOR_EQ(I, last_item))
+            break;
 
         if (!item->positions_valid)
         {
@@ -3726,7 +3755,7 @@ exo_icon_view_layout_single_line (ExoIconView *icon_view,
 
         if (*v < ajdusted_v)
             *v = ajdusted_v;
-    }
+    })
 
     return last_item;
 }
@@ -3743,7 +3772,7 @@ exo_icon_view_layout_lines (ExoIconView *icon_view, long item_u_width)
 
 restart: ;
 
-    GList * icons = priv->items;
+    ITERATOR I = ITERATOR_FROM_HEAD(priv->items);
 
     long line = 0;
     long posl = 0;
@@ -3751,8 +3780,8 @@ restart: ;
     long v = priv->margin;
 
     do {
-        icons = exo_icon_view_layout_single_line(
-            icon_view, icons,
+        I = exo_icon_view_layout_single_line(
+            icon_view, I,
             item_u_width, line,
             &v, &maximum_u_width, max_posl,
             &redraw_queued
@@ -3761,11 +3790,8 @@ restart: ;
         /* count the number of positions in the first line */
         if (G_UNLIKELY (line == 0))
         {
-            GList * items;
-            for (items = priv->items, posl = 0; items != icons; items = items->next, ++posl)
-            {
-                /* nothing */;
-            }
+            ExoIconViewItem * item = ITERATOR_VALUE(I);
+            posl = item ? (long) item->index : (long) COLLECTION_LENGTH(priv->items);
         }
 
         /* guard against appearing both scroll bars at the same time */
@@ -3776,7 +3802,7 @@ restart: ;
         }
 
         line++;
-    } while (icons != NULL);
+    } while (!ITERATOR_IS_NULL(I));
 
     v += priv->margin;
 
@@ -3830,7 +3856,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
     long max_item_width = 0;
     long max_item_height = 0;
 
-    FOR_EACH_VIEW_ITEM(item, priv->items,
+    FOR_EACH_ITEM(priv->items, item,
     {
         exo_icon_view_calculate_item_size (icon_view, item);
         max_item_width = MAX (max_item_width, item->bounding_box.width);
@@ -3849,7 +3875,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
     */
     priv->animation_time = g_get_monotonic_time();
     gboolean allow_animation = (priv->animation_time - priv->time_of_last_model_set) > G_USEC_PER_SEC * 1.0;
-    FOR_EACH_VIEW_ITEM(item, priv->items,
+    FOR_EACH_ITEM(priv->items, item,
     {
         if (allow_animation)
         {
@@ -4149,7 +4175,7 @@ _exo_icon_view_item_invalidate_size(ExoIconViewItem * item)
 static void
 exo_icon_view_invalidate_sizes(ExoIconView *icon_view)
 {
-    FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
         _exo_icon_view_item_invalidate_size(item);
     })
@@ -4385,6 +4411,9 @@ static void
 exo_icon_view_select_item (ExoIconView      *icon_view,
                            ExoIconViewItem  *item)
 {
+  if (!item)
+    return;
+
   if (item->selected || icon_view->priv->selection_mode == GTK_SELECTION_NONE)
     return;
   else if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
@@ -4404,6 +4433,9 @@ static void
 exo_icon_view_unselect_item (ExoIconView      *icon_view,
                              ExoIconViewItem  *item)
 {
+  if (!item)
+    return;
+
   if (!item->selected)
     return;
 
@@ -4420,49 +4452,15 @@ exo_icon_view_unselect_item (ExoIconView      *icon_view,
 }
 
 
-static void verify_items(const ExoIconView * icon_view)
-{
-    int i = 0;
-    FOR_EACH_VIEW_ITEM(item, icon_view->priv->items,
-    {
-        if (item->index != i)
-          g_error ("List item does not match its index: "
-                   "item index %d and list index %d\n", item->index, i);
-        i++;
-    })
-}
-
-static void update_indeces(const ExoIconView * icon_view)
-{
-    if (icon_view->priv->update_indeces < 0)
-      return;
-
-    int idx = icon_view->priv->update_indeces;
-    GList * list = g_list_nth(icon_view->priv->items, idx);
-    for (; list; list = list->next, idx++)
-    {
-        ExoIconViewItem *item;
-        item = list->data;
-        item->index = idx;
-    }
-
-    icon_view->priv->update_indeces = -1;
-
-    verify_items(icon_view);
-}
-
-
 static void
 exo_icon_view_row_changed (GtkTreeModel *model,
                            GtkTreePath  *path,
                            GtkTreeIter  *iter,
                            ExoIconView  *icon_view)
 {
-  ExoIconViewItem *item;
-
   update_indeces(icon_view);
 
-  item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+  ExoIconViewItem * item = GET_ITEM_BY_INDEX(icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
 
   /* stop editing this item */
   if (G_UNLIKELY (item == icon_view->priv->edited_item))
@@ -4495,7 +4493,8 @@ exo_icon_view_row_inserted (GtkTreeModel *model,
   item->iter = *iter;
   item->index = idx;
   _exo_icon_view_item_invalidate_size(item);
-  icon_view->priv->items = g_list_insert (icon_view->priv->items, item, idx);
+
+  INSERT_ITEM_AT_INDEX(icon_view->priv->items, item, idx);
 
   if (icon_view->priv->update_indeces < 0 || icon_view->priv->update_indeces > idx)
     icon_view->priv->update_indeces = idx;
@@ -4518,7 +4517,7 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
   update_indeces(icon_view);
 
   /* determine the position and the item for the path */
-  list = g_list_nth (icon_view->priv->items, gtk_tree_path_get_indices (path)[0]);
+  list = g_list_nth (icon_view->priv->items.items, gtk_tree_path_get_indices (path)[0]);
   next = list->next;
   item = list->data;
 
@@ -4555,7 +4554,7 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
   g_free (item->cell_geometries);
 
   /* drop the item from the list */
-  icon_view->priv->items = g_list_delete_link (icon_view->priv->items, list);
+  icon_view->priv->items.items = g_list_delete_link (icon_view->priv->items.items, list);
 
   /* release the item */
   g_slice_free (ExoIconViewItem, item);
@@ -4610,11 +4609,11 @@ exo_icon_view_rows_reordered (GtkTreeModel *model,
   for (i = 0; i < length; i++)
     order[new_order[i]] = i;
 
-  for (i = 0, list = icon_view->priv->items; list != NULL; list = list->next, i++)
+  for (i = 0, list = icon_view->priv->items.items; list != NULL; list = list->next, i++)
     list_array[order[i]] = list;
 
   /* hook up the first item */
-  icon_view->priv->items = list_array[0];
+  icon_view->priv->items.items = list_array[0];
   list_array[0]->prev = NULL;
   ((ExoIconViewItem*)list_array[0]->data)->index = 0;
 
@@ -4806,44 +4805,52 @@ find_item_page_up_down (ExoIconView     *icon_view,
                         ExoIconViewItem *current,
                         gint             count)
 {
-  GList *item = g_list_find (icon_view->priv->items, current);
-  GList *next;
-  gint   col = current->col;
-  GdkRectangle current_item_area = item_get_bounding_box(current);
-  gint   y = current_item_area.y + count * gtk_adjustment_get_page_size(icon_view->priv->vadjustment);
+    gint   col = current->col;
+    GdkRectangle current_item_area = item_get_bounding_box(current);
+    gint   y = current_item_area.y + count * gtk_adjustment_get_page_size(icon_view->priv->vadjustment);
 
-  if (count > 0)
+    ITERATOR I = ITERATOR_FROM_ITEM(icon_view->priv->items, current);
+
+    if (count > 0)
     {
-      for (; item != NULL; item = item->next)
+        ITERATE_FORWARD(I, _dummy __attribute__((unused)),
         {
-          for (next = item->next; next; next = next->next)
-            if (EXO_ICON_VIEW_ITEM (next->data)->col == col)
-              break;
+            ITERATOR N = ITERATOR_NEXT(I);
+            ITERATE_FORWARD(N, item,
+            {
+                if (item->col == col)
+                    break;
+            })
 
-          if (next == NULL)
-            break;
-          GdkRectangle area = item_get_bounding_box(EXO_ICON_VIEW_ITEM(next->data));
-          if (area.y > y)
-            break;
-        }
+            if (ITERATOR_IS_NULL(N))
+                break;
+
+            GdkRectangle area = item_get_bounding_box(ITERATOR_VALUE(N));
+            if (area.y > y)
+                break;
+        })
     }
-  else
+    else
     {
-      for (; item != NULL; item = item->prev)
+        ITERATE_BACKWARD(I, _dummy __attribute__((unused)),
         {
-          for (next = item->prev; next; next = next->prev)
-            if (EXO_ICON_VIEW_ITEM (next->data)->col == col)
-              break;
+            ITERATOR N = ITERATOR_PREV(I);
+            ITERATE_BACKWARD(N, item,
+            {
+                if (item->col == col)
+                    break;
+            })
 
-          if (next == NULL)
-            break;
-          GdkRectangle area = item_get_bounding_box(EXO_ICON_VIEW_ITEM(next->data));
-          if (area.y < y)
-            break;
-        }
+            if (ITERATOR_IS_NULL(N))
+                break;
+
+            GdkRectangle area = item_get_bounding_box(ITERATOR_VALUE(N));
+            if (area.y < y)
+                break;
+        })
     }
 
-  return (item != NULL) ? item->data : NULL;
+    return ITERATOR_VALUE(I);
 }
 
 
@@ -4853,44 +4860,41 @@ exo_icon_view_select_all_between (ExoIconView     *icon_view,
                                   ExoIconViewItem *anchor,
                                   ExoIconViewItem *cursor)
 {
-  GList *items;
-  ExoIconViewItem *item, *last;
-  gboolean dirty = FALSE;
+    ExoIconViewItem * last;
+    gboolean dirty = FALSE;
 
-  for (items = icon_view->priv->items; items; items = items->next)
+    ITERATOR I = ITERATOR_FROM_HEAD(icon_view->priv->items);
+
+    ITERATE_FORWARD(I, item,
     {
-      item = items->data;
-
-      if (item == anchor)
+        if (item == anchor)
         {
-          last = cursor;
-          break;
+            last = cursor;
+            break;
         }
-      else if (item == cursor)
+        else if (item == cursor)
         {
-          last = anchor;
-          break;
+            last = anchor;
+            break;
         }
-    }
+    })
 
-  for (; items; items = items->next)
+    ITERATE_FORWARD(I, item,
     {
-      item = items->data;
+        if (!item->selected)
+        {
+            dirty = TRUE;
+            item->selected = TRUE;
+            exo_icon_view_item_selected_changed (icon_view, item);
+        }
 
-      if (!item->selected)
-      {
-        dirty = TRUE;
-        item->selected = TRUE;
-        exo_icon_view_item_selected_changed (icon_view, item);
-      }
+        exo_icon_view_queue_draw_item (icon_view, item);
 
-      exo_icon_view_queue_draw_item (icon_view, item);
+        if (item == last)
+            break;
+    })
 
-      if (item == last)
-        break;
-    }
-
-  return dirty;
+    return dirty;
 }
 
 
@@ -4933,36 +4937,34 @@ static void move_cursor_to (ExoIconView * icon_view, ExoIconViewItem * item, gin
 
 
 
-static GList * _find_matching_row_col(GList * list, int row_step, int col_step)
+static ITERATOR _find_matching_row_col(ITERATOR I, int row_step, int col_step)
 {
     g_assert(row_step == 0 || col_step == 0);
     g_assert(row_step != 0 || col_step != 0);
 
-    int row = EXO_ICON_VIEW_ITEM(list->data)->row + row_step;
-    int col = EXO_ICON_VIEW_ITEM(list->data)->col + col_step;
+    int row = ITERATOR_VALUE(I)->row + row_step;
+    int col = ITERATOR_VALUE(I)->col + col_step;
 
     int step = (row_step != 0) ? row_step : col_step;
 
     if (step > 0)
     {
-        for (list = list->next; list != NULL && list->next != NULL; list = list->next)
+        ITERATE_FORWARD(I, item,
         {
-            if (EXO_ICON_VIEW_ITEM(list->data)->row == row
-             && EXO_ICON_VIEW_ITEM(list->data)->col == col)
+            if (item->row == row && item->col == col)
                 break;
-        }
+        })
     }
     else
     {
-        for (list = list->prev; list != NULL; list = list->prev)
+        ITERATE_BACKWARD(I, item,
         {
-            if (EXO_ICON_VIEW_ITEM(list->data)->row == row
-             && EXO_ICON_VIEW_ITEM(list->data)->col == col)
+            if (item->row == row && item->col == col)
                 break;
-        }
+        })
     }
 
-    return list;
+    return I;
 }
 
 
@@ -4972,7 +4974,6 @@ exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
 {
     ExoIconViewPrivate * priv = icon_view->priv;
     ExoIconViewItem *item;
-    GList           *list;
     gint             cell = -1;
     gint             step;
 
@@ -4983,14 +4984,14 @@ exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
 
     if (!priv->cursor_item)
     {
-        GList * list = priv->items;
-        item = list ? list->data : NULL;
+        item = ITERATOR_VALUE(ITERATOR_FROM_HEAD(priv->items));
     }
     else
     {
         item = priv->cursor_item;
         cell = priv->cursor_cell;
         step = count > 0 ? 1 : -1;
+        ITERATOR I;
         while (item)
         {
             cell = find_cell(icon_view, item, cell,
@@ -4999,21 +5000,18 @@ exo_icon_view_move_cursor_up_down (ExoIconView *icon_view,
             if (count == 0)
                 break;
 
-            /* determine the list position for the item */
-            list = g_list_find (priv->items, item);
+            I = ITERATOR_FROM_ITEM(priv->items, item);
 
             if (G_LIKELY (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
             {
-                /* determine the item in the next/prev row */
-                list = _find_matching_row_col(list, step, 0);
+                I = _find_matching_row_col(I, step, 0);
             }
             else
             {
-                list = (step > 0) ? list->next : list->prev;
+                I = (step > 0) ? ITERATOR_NEXT(I) : ITERATOR_PREV(I);
             }
 
-            /* check if we found a matching item */
-            item = (list != NULL) ? list->data : NULL;
+            item = ITERATOR_VALUE(I);
 
             count = count - step;
         }
@@ -5029,20 +5027,21 @@ exo_icon_view_move_cursor_page_up_down (ExoIconView *icon_view,
                                         gint         count)
 {
     ExoIconViewPrivate * priv = icon_view->priv;
-    ExoIconViewItem *item;
+    ExoIconViewItem * item;
 
     if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
         return;
 
+    update_indeces(icon_view);
+
     if (!priv->cursor_item)
     {
-        GList * list = priv->items;
-        item = list ? list->data : NULL;
+        item = ITERATOR_VALUE(ITERATOR_FROM_HEAD(priv->items));
     }
     else
-        item = find_item_page_up_down(icon_view,
-                                      priv->cursor_item,
-                                      count);
+    {
+        item = find_item_page_up_down(icon_view, priv->cursor_item, count);
+    }
 
     move_cursor_to(icon_view, item, -1);
 }
@@ -5053,58 +5052,51 @@ static void
 exo_icon_view_move_cursor_left_right (ExoIconView *icon_view,
                                       gint         count)
 {
-  ExoIconViewItem *item;
-  GList           *list;
-  gint             cell = -1;
-  gint             step;
+    ExoIconViewPrivate *priv = icon_view->priv;
+    ExoIconViewItem    *item;
+    gint                cell = -1;
+    gint                step;
 
-  if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
-    return;
+    if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
+        return;
 
-  update_indeces(icon_view);
+    update_indeces(icon_view);
 
-  if (gtk_widget_get_direction (GTK_WIDGET (icon_view)) == GTK_TEXT_DIR_RTL)
-    count *= -1;
+    if (gtk_widget_get_direction (GTK_WIDGET (icon_view)) == GTK_TEXT_DIR_RTL)
+        count *= -1;
 
-  if (!icon_view->priv->cursor_item)
-  {
-      GList * list = icon_view->priv->items;
-      item = list ? list->data : NULL;
-  }
-  else
+    if (!priv->cursor_item)
     {
-      item = icon_view->priv->cursor_item;
-      cell = icon_view->priv->cursor_cell;
-      step = count > 0 ? 1 : -1;
-      while (item)
+        item = ITERATOR_VALUE(ITERATOR_FROM_HEAD(priv->items));
+    }
+    else
+    {
+        item = icon_view->priv->cursor_item;
+        cell = icon_view->priv->cursor_cell;
+        step = count > 0 ? 1 : -1;
+        ITERATOR I;
+        while (item)
         {
-          cell = find_cell (icon_view, item, cell,
-                            GTK_ORIENTATION_HORIZONTAL,
-                            step, &count);
-          if (count == 0)
-            break;
+            cell = find_cell (icon_view, item, cell,
+                              GTK_ORIENTATION_HORIZONTAL,
+                              step, &count);
+            if (count == 0)
+                break;
 
-          /* lookup the item in the list */
-          list = g_list_find (icon_view->priv->items, item);
+            I = ITERATOR_FROM_ITEM(priv->items, item);
 
-          if (G_LIKELY (icon_view->priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
+            if (G_LIKELY (icon_view->priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS))
             {
-              /* determine the next/prev list item depending on step,
-               * support wrapping around on the edges, as requested
-               * in http://bugzilla.xfce.org/show_bug.cgi?id=1623.
-               */
-              list = (step > 0) ? list->next : list->prev;
+                I = (step > 0) ? ITERATOR_NEXT(I) : ITERATOR_PREV(I);
             }
-          else
+            else
             {
-              /* determine the item in the next/prev row */
-              list = _find_matching_row_col(list, 0, step);
+              I = _find_matching_row_col(I, 0, step);
             }
 
-          /* determine the item for the list position (if any) */
-          item = (list != NULL) ? list->data : NULL;
+            item = ITERATOR_VALUE(I);
 
-          count = count - step;
+            count = count - step;
         }
     }
 
@@ -5117,14 +5109,13 @@ static void
 exo_icon_view_move_cursor_start_end (ExoIconView *icon_view,
                                      gint         count)
 {
+  ExoIconViewPrivate *priv = icon_view->priv;
   ExoIconViewItem *item;
-  GList           *lp;
 
   if (!gtk_widget_has_focus (GTK_WIDGET (icon_view)))
     return;
 
-  lp = (count < 0) ? icon_view->priv->items : g_list_last (icon_view->priv->items);
-  item = lp ? EXO_ICON_VIEW_ITEM (lp->data) : NULL;
+  item = ITERATOR_VALUE((count < 0) ? ITERATOR_FROM_HEAD(priv->items) : ITERATOR_FROM_LAST(priv->items));
 
   move_cursor_to(icon_view, item, -1);
 }
@@ -5531,7 +5522,7 @@ exo_icon_view_icon_to_widget_coords (const ExoIconView *icon_view,
  *               if no icon exists at that position.
  **/
 GtkTreePath*
-exo_icon_view_get_path_at_pos (const ExoIconView *icon_view,
+exo_icon_view_get_path_at_pos (ExoIconView *icon_view,
                                gint               x,
                                gint               y)
 {
@@ -5571,7 +5562,7 @@ exo_icon_view_get_path_at_pos (const ExoIconView *icon_view,
  * Since: 0.3.1
  **/
 gboolean
-exo_icon_view_get_item_at_pos (const ExoIconView *icon_view,
+exo_icon_view_get_item_at_pos (ExoIconView *icon_view,
                                gint               x,
                                gint               y,
                                GtkTreePath      **path,
@@ -5595,98 +5586,6 @@ exo_icon_view_get_item_at_pos (const ExoIconView *icon_view,
   return (item != NULL);
 }
 
-
-
-/**
- * exo_icon_view_get_visible_range:
- * @icon_view  : A #ExoIconView
- * @start_path : Return location for start of region, or %NULL
- * @end_path   : Return location for end of region, or %NULL
- *
- * Sets @start_path and @end_path to be the first and last visible path.
- * Note that there may be invisible paths in between.
- *
- * Both paths should be freed with gtk_tree_path_free() after use.
- *
- * Return value: %TRUE, if valid paths were placed in @start_path and @end_path
- *
- * Since: 0.3.1
- **/
-gboolean
-exo_icon_view_get_visible_range (const ExoIconView *icon_view,
-                                 GtkTreePath      **start_path,
-                                 GtkTreePath      **end_path)
-{
-  const ExoIconViewPrivate *priv = icon_view->priv;
-  const ExoIconViewItem    *item;
-  const GList              *lp;
-  gint                      start_index = -1;
-  gint                      end_index = -1;
-  gint                      i;
-
-  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), FALSE);
-
-  update_indeces(icon_view);
-
-  if (priv->hadjustment == NULL || priv->vadjustment == NULL)
-    return FALSE;
-
-  if (start_path == NULL && end_path == NULL)
-    return FALSE;
-
-  for (i = 0, lp = priv->items; lp != NULL; ++i, lp = lp->next)
-    {
-      item = (const ExoIconViewItem *) lp->data;
-      GdkRectangle item_area = item_get_bounding_box(item);
-      if ((item_area.x + item_area.width >= (gint) gtk_adjustment_get_value(priv->hadjustment)) &&
-          (item_area.y + item_area.height >= (gint) gtk_adjustment_get_value(priv->vadjustment)) &&
-          (item_area.x <= (gint) (gtk_adjustment_get_value(priv->hadjustment) + gtk_adjustment_get_page_size(priv->hadjustment))) &&
-          (item_area.y <= (gint) (gtk_adjustment_get_value(priv->vadjustment) + gtk_adjustment_get_page_size(priv->vadjustment))))
-        {
-          if (start_index == -1)
-            start_index = i;
-          end_index = i;
-        }
-    }
-
-  if (start_path != NULL && start_index != -1)
-    *start_path = gtk_tree_path_new_from_indices (start_index, -1);
-  if (end_path != NULL && end_index != -1)
-    *end_path = gtk_tree_path_new_from_indices (end_index, -1);
-
-  return (start_index != -1);
-}
-
-
-
-/**
- * exo_icon_view_selected_foreach:
- * @icon_view : A #ExoIconView.
- * @func      : The funcion to call for each selected icon.
- * @data      : User data to pass to the function.
- *
- * Calls a function for each selected icon. Note that the model or
- * selection cannot be modified from within this function.
- **/
-void
-exo_icon_view_selected_foreach (ExoIconView           *icon_view,
-                                ExoIconViewForeachFunc func,
-                                gpointer               data)
-{
-  GtkTreePath *path;
-  GList       *lp;
-
-  update_indeces(icon_view);
-
-  path = gtk_tree_path_new_first ();
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
-    {
-      if (EXO_ICON_VIEW_ITEM (lp->data)->selected)
-        (*func) (icon_view, path, data);
-      gtk_tree_path_next (path);
-    }
-  gtk_tree_path_free (path);
-}
 
 
 
@@ -5822,8 +5721,6 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
 {
   ExoIconViewItem *item;
   GtkTreeIter      iter;
-  GList           *items = NULL;
-  GList           *lp;
   gint             n;
 
   g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
@@ -5869,13 +5766,12 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
       g_object_unref (G_OBJECT (icon_view->priv->model));
 
       /* drop all items belonging to the previous model */
-      for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
-        {
-          g_free (EXO_ICON_VIEW_ITEM (lp->data)->cell_geometries);
-          g_slice_free (ExoIconViewItem, lp->data);
-        }
-      g_list_free (icon_view->priv->items);
-      icon_view->priv->items = NULL;
+      FOR_EACH_ITEM(icon_view->priv->items, item,
+      {
+          g_free (item->cell_geometries);
+          g_slice_free (ExoIconViewItem, item);
+      })
+      COLLECTION_REMOVE_ALL(icon_view->priv->items);
 
       /* reset statistics */
       icon_view->priv->search_column = -1;
@@ -5949,11 +5845,11 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
               item->iter = iter;
               item->index = n++;
               _exo_icon_view_item_invalidate_size(item);
-              items = g_list_prepend (items, item);
+              COLLECTION_PREPEND(icon_view->priv->items, item);
             }
           while (gtk_tree_model_iter_next (model, &iter));
         }
-      icon_view->priv->items = g_list_reverse (items);
+      COLLECTION_REVERSE(icon_view->priv->items);
 
       /* layout the new items */
       exo_icon_view_queue_layout (icon_view);
@@ -6095,13 +5991,11 @@ void
 exo_icon_view_select_path (ExoIconView *icon_view,
                            GtkTreePath *path)
 {
-  ExoIconViewItem *item;
-
   g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
   g_return_if_fail (icon_view->priv->model != NULL);
   g_return_if_fail (gtk_tree_path_get_depth (path) > 0);
 
-  item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+  ExoIconViewItem * item = GET_ITEM_BY_INDEX(icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
   if (G_LIKELY (item != NULL))
   {
     if (!exo_icon_view_is_selected_items_more(icon_view, 0))
@@ -6125,15 +6019,12 @@ void
 exo_icon_view_unselect_path (ExoIconView *icon_view,
                              GtkTreePath *path)
 {
-  ExoIconViewItem *item;
-
   g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
   g_return_if_fail (icon_view->priv->model != NULL);
   g_return_if_fail (gtk_tree_path_get_depth (path) > 0);
 
-  item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
-  if (G_LIKELY (item != NULL))
-    exo_icon_view_unselect_item (icon_view, item);
+  ExoIconViewItem * item = GET_ITEM_BY_INDEX(icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+  exo_icon_view_unselect_item (icon_view, item);
 }
 
 
@@ -6158,55 +6049,52 @@ exo_icon_view_unselect_path (ExoIconView *icon_view,
 GList*
 exo_icon_view_get_selected_items (const ExoIconView *icon_view)
 {
-  GList *selected = NULL;
-  GList *lp;
-  gint   i;
+    g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), NULL);
 
-  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), NULL);
+    update_indeces(icon_view);
 
-  for (i = 0, lp = icon_view->priv->items; lp != NULL; ++i, lp = lp->next)
+    GList * selected = NULL;
+
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      if (EXO_ICON_VIEW_ITEM (lp->data)->selected)
-        selected = g_list_append (selected, gtk_tree_path_new_from_indices (i, -1));
-    }
+        if (item->selected)
+            selected = g_list_append (selected, gtk_tree_path_new_from_indices (item->index, -1));
+    })
 
-  return selected;
+    return selected;
 }
 
 
 
 gint exo_icon_view_count_selected_items (const ExoIconView *icon_view)
 {
-  GList *lp;
-  gint   i = 0;
+    g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), 0);
 
-  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), 0);
+    gint i = 0;
 
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      if (EXO_ICON_VIEW_ITEM (lp->data)->selected)
-        i++;
-    }
+        if (item->selected)
+            i++;
+    })
 
-  return i;
+    return i;
 }
 
 gboolean exo_icon_view_is_selected_items_more(const ExoIconView *icon_view, gint max_count)
 {
-  GList *lp;
-  gint   i = 0;
+    g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), 0);
+    gint i = 0;
 
-  g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), 0);
-
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      if (EXO_ICON_VIEW_ITEM (lp->data)->selected)
-        i++;
-      if (i > max_count)
-         return TRUE;
-    }
+        if (item->selected)
+            i++;
+        if (i > max_count)
+            return TRUE;
+    })
 
-  return FALSE;
+    return FALSE;
 }
 
 
@@ -6220,28 +6108,25 @@ gboolean exo_icon_view_is_selected_items_more(const ExoIconView *icon_view, gint
 void
 exo_icon_view_select_all (ExoIconView *icon_view)
 {
-  GList *items;
-  gboolean dirty = FALSE;
+    g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
 
-  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+    gboolean dirty = FALSE;
 
-  if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
-    return;
+    if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
+        return;
 
-  for (items = icon_view->priv->items; items; items = items->next)
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      ExoIconViewItem *item = items->data;
-
-      if (!item->selected)
+        if (!item->selected)
         {
-          dirty = TRUE;
-          item->selected = TRUE;
-          exo_icon_view_queue_draw_item (icon_view, item);
+            dirty = TRUE;
+            item->selected = TRUE;
+            exo_icon_view_queue_draw_item (icon_view, item);
         }
-    }
+    })
 
-  if (dirty)
-    g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+    if (dirty)
+        g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
 }
 
 
@@ -6255,39 +6140,35 @@ exo_icon_view_select_all (ExoIconView *icon_view)
 void
 exo_icon_view_unselect_all (ExoIconView *icon_view)
 {
-  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+    g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
 
-  if (G_UNLIKELY (icon_view->priv->selection_mode == GTK_SELECTION_BROWSE))
-    return;
+    if (G_UNLIKELY (icon_view->priv->selection_mode == GTK_SELECTION_BROWSE))
+        return;
 
-  if (exo_icon_view_unselect_all_internal (icon_view))
-    g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+    if (exo_icon_view_unselect_all_internal (icon_view))
+        g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
 }
 
 
 void
 exo_icon_view_invert_selection(ExoIconView *icon_view)
 {
-  GList *items;
+    g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
 
-  g_return_if_fail (EXO_IS_ICON_VIEW (icon_view));
+    if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
+        return;
 
-  if (icon_view->priv->selection_mode != GTK_SELECTION_MULTIPLE)
-    return;
-
-  for (items = icon_view->priv->items; items; items = items->next)
+    FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      ExoIconViewItem *item = items->data;
+        if (item->selected)
+            item->selected = FALSE;
+        else
+            item->selected = TRUE;
+        exo_icon_view_queue_draw_item (icon_view, item);
+        exo_icon_view_item_selected_changed (icon_view, item);
+    })
 
-      if (item->selected)
-          item->selected = FALSE;
-      else
-          item->selected = TRUE;
-      exo_icon_view_queue_draw_item (icon_view, item);
-      exo_icon_view_item_selected_changed (icon_view, item);
-    }
-
-  g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+    g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
 }
 
 
@@ -6305,13 +6186,11 @@ gboolean
 exo_icon_view_path_is_selected (const ExoIconView *icon_view,
                                 GtkTreePath       *path)
 {
-  ExoIconViewItem *item;
-
   g_return_val_if_fail (EXO_IS_ICON_VIEW (icon_view), FALSE);
   g_return_val_if_fail (icon_view->priv->model != NULL, FALSE);
   g_return_val_if_fail (gtk_tree_path_get_depth (path) > 0, FALSE);
 
-  item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+  ExoIconViewItem * item = GET_ITEM_BY_INDEX(icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
 
   return (item != NULL && item->selected);
 }
@@ -6415,7 +6294,7 @@ exo_icon_view_set_cursor (ExoIconView     *icon_view,
 
   exo_icon_view_stop_editing (icon_view, TRUE);
 
-  item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+  item = GET_ITEM_BY_INDEX (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
   if (G_UNLIKELY (item == NULL))
     return;
 
@@ -6499,7 +6378,7 @@ exo_icon_view_scroll_to_path (ExoIconView *icon_view,
     }
   else
     {
-      item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
+      item = GET_ITEM_BY_INDEX (icon_view->priv->items, gtk_tree_path_get_indices(path)[0]);
       if (G_UNLIKELY (item == NULL))
         return;
 
@@ -7837,7 +7716,7 @@ exo_icon_view_set_drag_dest_item (ExoIconView            *icon_view,
       if (G_LIKELY (previous_path != NULL))
         {
           /* schedule a redraw for the previous path */
-          item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices (previous_path)[0]);
+          item = GET_ITEM_BY_INDEX (icon_view->priv->items, gtk_tree_path_get_indices (previous_path)[0]);
           if (G_LIKELY (item != NULL))
             exo_icon_view_queue_draw_item (icon_view, item);
           gtk_tree_path_free (previous_path);
@@ -7867,7 +7746,7 @@ exo_icon_view_set_drag_dest_item (ExoIconView            *icon_view,
       icon_view->priv->dest_item = gtk_tree_row_reference_new_proxy (G_OBJECT (icon_view), icon_view->priv->model, path);
 
       /* schedule a redraw on the new path */
-      item = g_list_nth_data (icon_view->priv->items, gtk_tree_path_get_indices (path)[0]);
+      item = GET_ITEM_BY_INDEX (icon_view->priv->items, gtk_tree_path_get_indices (path)[0]);
       if (G_LIKELY (item != NULL))
         exo_icon_view_queue_draw_item (icon_view, item);
     }
@@ -8001,7 +7880,6 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
 #endif
   GdkPixbuf   *pixbuf;
   cairo_t     *cr;
-  GList       *lp;
   GtkStyle    *style;
   gint         idx;
 
@@ -8017,9 +7895,8 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
   idx = gtk_tree_path_get_indices (path)[0];
   style = gtk_widget_get_style (widget);
 
-  for (lp = icon_view->priv->items; lp != NULL; lp = lp->next)
+  FOR_EACH_ITEM(icon_view->priv->items, item,
     {
-      ExoIconViewItem *item = lp->data;
       if (G_UNLIKELY (idx == item->index))
         {
 
@@ -8079,7 +7956,7 @@ exo_icon_view_create_drag_icon (ExoIconView *icon_view,
           return pixbuf;
 #endif
         }
-    }
+    })
 
   return NULL;
 }

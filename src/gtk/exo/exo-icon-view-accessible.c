@@ -1160,7 +1160,7 @@ exo_icon_view_accessible_get_n_children (AtkObject *accessible)
 
   icon_view = EXO_ICON_VIEW (widget);
 
-  return g_list_length (icon_view->priv->items);
+  return COLLECTION_LENGTH (icon_view->priv->items);
 }
 
 static AtkObject *
@@ -1190,7 +1190,6 @@ exo_icon_view_accessible_ref_child (AtkObject *accessible,
 {
   ExoIconView *icon_view;
   GtkWidget *widget;
-  GList *icons;
   AtkObject *obj;
   ExoIconViewItemAccessible *a11y_item;
 
@@ -1202,13 +1201,10 @@ exo_icon_view_accessible_ref_child (AtkObject *accessible,
 
   update_indeces(icon_view);
 
-  icons = g_list_nth (icon_view->priv->items, index);
+  ExoIconViewItem * item  = GET_ITEM_BY_INDEX (icon_view->priv->items, index);
   obj = NULL;
-  if (icons)
+  if (item)
     {
-      ExoIconViewItem *item = icons->data;
-
-      g_return_val_if_fail (item->index == index, NULL);
       obj = exo_icon_view_accessible_find_child (accessible, index);
       if (!obj)
         {
@@ -1541,7 +1537,7 @@ exo_icon_view_accessible_model_rows_reordered (GtkTreeModel *tree_model,
       info = items->data;
       item = EXO_ICON_VIEW_ITEM_ACCESSIBLE (info->item);
       info->index = order[info->index];
-      item->item = g_list_nth_data (icon_view->priv->items, info->index);
+      item->item = GET_ITEM_BY_INDEX (icon_view->priv->items, info->index);
       items = items->next;
     }
   g_free (order);
@@ -1821,7 +1817,7 @@ exo_icon_view_accessible_add_selection (AtkSelection *selection,
   icon_view = EXO_ICON_VIEW (widget);
   update_indeces(icon_view);
 
-  item = g_list_nth_data (icon_view->priv->items, i);
+  item = GET_ITEM_BY_INDEX (icon_view->priv->items, i);
 
   if (!item)
     return FALSE;
@@ -1851,10 +1847,8 @@ static AtkObject*
 exo_icon_view_accessible_ref_selection (AtkSelection *selection,
                                         gint          i)
 {
-  GList *l;
   GtkWidget *widget;
   ExoIconView *icon_view;
-  ExoIconViewItem *item;
 
   widget = gtk_accessible_get_widget (GTK_ACCESSIBLE (selection));
   if (widget == NULL)
@@ -1862,19 +1856,16 @@ exo_icon_view_accessible_ref_selection (AtkSelection *selection,
 
   icon_view = EXO_ICON_VIEW (widget);
 
-  l = icon_view->priv->items;
-  while (l)
-    {
-      item = l->data;
+  FOR_EACH_ITEM(icon_view->priv->items, item,
+  {
       if (item->selected)
-        {
+      {
           if (i == 0)
-	    return atk_object_ref_accessible_child (gtk_widget_get_accessible (widget), item->index);
+              return atk_object_ref_accessible_child (gtk_widget_get_accessible (widget), item->index);
           else
-            i--;
-        }
-      l = l->next;
-    }
+              i--;
+      }
+  })
 
   return NULL;
 }
@@ -1884,8 +1875,6 @@ exo_icon_view_accessible_get_selection_count (AtkSelection *selection)
 {
   GtkWidget *widget;
   ExoIconView *icon_view;
-  ExoIconViewItem *item;
-  GList *l;
   gint count;
 
   widget = gtk_accessible_get_widget (GTK_ACCESSIBLE (selection));
@@ -1893,18 +1882,12 @@ exo_icon_view_accessible_get_selection_count (AtkSelection *selection)
     return 0;
 
   icon_view = EXO_ICON_VIEW (widget);
-
-  l = icon_view->priv->items;
   count = 0;
-  while (l)
-    {
-      item = l->data;
-
-      if (item->selected)
-	count++;
-
-      l = l->next;
-    }
+  FOR_EACH_ITEM(icon_view->priv->items, item,
+  {
+    if (item->selected)
+        count++;
+  })
 
   return count;
 }
@@ -1923,7 +1906,7 @@ exo_icon_view_accessible_is_child_selected (AtkSelection *selection,
 
   icon_view = EXO_ICON_VIEW (widget);
 
-  item = g_list_nth_data (icon_view->priv->items, i);
+  item = GET_ITEM_BY_INDEX (icon_view->priv->items, i);
   if (!item)
     return FALSE;
 
@@ -1936,8 +1919,6 @@ exo_icon_view_accessible_remove_selection (AtkSelection *selection,
 {
   GtkWidget *widget;
   ExoIconView *icon_view;
-  ExoIconViewItem *item;
-  GList *l;
   gint count;
 
   widget = gtk_accessible_get_widget (GTK_ACCESSIBLE (selection));
@@ -1945,11 +1926,9 @@ exo_icon_view_accessible_remove_selection (AtkSelection *selection,
     return FALSE;
 
   icon_view = EXO_ICON_VIEW (widget);
-  l = icon_view->priv->items;
   count = 0;
-  while (l)
-    {
-      item = l->data;
+  FOR_EACH_ITEM(icon_view->priv->items, item,
+  {
       if (item->selected)
         {
           if (count == i)
@@ -1959,8 +1938,7 @@ exo_icon_view_accessible_remove_selection (AtkSelection *selection,
             }
           count++;
         }
-      l = l->next;
-    }
+  })
 
   return FALSE;
 }
