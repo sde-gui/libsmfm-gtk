@@ -150,12 +150,12 @@ GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 AC_ARG_ENABLE(demo,
     [AC_HELP_STRING([--enable-demo],
-        [build libsmfm-demo file manager @<:@default=no@:>@])],
+        [build demo applications @<:@default=no@:>@])],
     [enable_demo="${enableval}"],
     [enable_demo=no]
 )
 AM_CONDITIONAL(ENABLE_DEMO, test x"$enable_demo" = x"yes")
-DEMO_APPS="libsmfm-demo-gtk$GTK_VERSION_MAJOR libsmfm-file-search-cli-demo-gtk$GTK_VERSION_MAJOR"
+DEMO_APPS="libsmfm-file-search-cli-demo-gtk$GTK_VERSION_MAJOR"
 AC_SUBST(DEMO_APPS)
 
 GETTEXT_PACKAGE="libsmfm-gtk$GTK_VERSION_MAJOR"
@@ -239,7 +239,6 @@ echo
 echo "prefix:                                                 $prefix"
 echo "sysconfdir:                                             $sysconfdir"
 echo "Enable compiler flags and other support for debugging:  $enable_debug"
-echo "Build demo program src/demo/libsmfm-demo:               $enable_demo"
 echo "Build with custom actions support (requires Vala):      $enable_actions"
 echo "Large file support:                                     $largefile"
 echo "Build libsmfm-gtk for Gtk+ version:                     $ac_with_gtk"

@@ -193,38 +193,9 @@ if ENABLE_DEMO
 bin_PROGRAMS += @DEMO_APPS@
 
 EXTRA_PROGRAMS += \
-	libsmfm-demo-gtk2 \
 	libsmfm-file-search-cli-demo-gtk2 \
-	libsmfm-demo-gtk3 \
 	libsmfm-file-search-cli-demo-gtk3 \
 	$(NULL)
-
-libsmfm_demo_gtk2_SOURCES = \
-	$(gtk_compat_SOURCES) \
-	demo/libsmfm-demo.c \
-	demo/main-win.c demo/main-win.h \
-	$(NULL)
-libsmfm_demo_gtk3_SOURCES = $(libsmfm_demo_gtk2_SOURCES)
-
-libsmfm_demo_gtk2_DEPENDENCIES = \
-	@LIBSMFM_GTK_LTLIBRARIES@ \
-	$(NULL)
-libsmfm_demo_gtk3_DEPENDENCIES = $(libsmfm_demo_gtk2_DEPENDENCIES)
-
-libsmfm_demo_gtk2_CFLAGS = \
-	$(LIBSMFM_CFLAGS) \
-	$(GTK_CFLAGS) \
-	-Werror-implicit-function-declaration \
-	$(NULL)
-libsmfm_demo_gtk3_CFLAGS = $(libsmfm_demo_gtk2_CFLAGS)
-
-libsmfm_demo_gtk2_LDADD = \
-	$(LIBSMFM_LIBS) \
-	$(GTK_LIBS) \
-	$(INTLLIBS) \
-	@LIBSMFM_GTK_LTLIBRARIES@ \
-	$(NULL)
-libsmfm_demo_gtk3_LDADD = $(libsmfm_demo_gtk2_LDADD)
 
 libsmfm_file_search_cli_demo_gtk2_SOURCES = \
 	demo/libsmfm-file-search-cli-demo.c \
@@ -276,7 +247,6 @@ EXTRA_DIST = \
 	gtk/fm-gtk-marshal.list \
 	gtk/fm-file-search-ui.c \
 	gtk/exo/README \
-	demo/main-win-ui.c \
 	$(VAPI_FILES) \
 	$(NULL)
 
