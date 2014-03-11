@@ -38,6 +38,50 @@ G_BEGIN_DECLS
 #define FM_IS_STANDARD_VIEW_CLASS(klass)    (G_TYPE_CHECK_CLASS_TYPE((klass),\
             FM_STANDARD_VIEW_TYPE))
 
+
+typedef enum _FmViewType {
+    FmViewType_Icon,
+    FmViewType_Tree
+} FmViewType;
+
+typedef struct _ModeSettings
+{
+    FmViewType type;
+
+    long icon_size;
+    const char * icon_size_id;
+
+    long   item_width_min;
+    double item_width_mult;
+
+    long   wrap_width_min;
+    double wrap_width_mult;
+
+    long   row_spacing_min;
+    double row_spacing_mult;
+
+    long   col_spacing_min;
+    double col_spacing_mult;
+
+    long   padding_min;
+    double padding_mult;
+
+    long cell_spacing;
+
+    PangoWrapMode wrap_mode;
+    PangoAlignment text_alignment;
+    long text_max_height;
+
+    gboolean horizontal_orientation;
+
+    /* FIXME: */
+    /*ExoIconViewLayoutMode icon_layout_mode;*/
+    unsigned icon_layout_mode;
+
+    gboolean force_thumbnails;
+} FmStandardViewModeSettings;
+
+
 /**
  * FmStandardViewMode
  * @FM_FV_ICON_VIEW: standard icon view
@@ -72,6 +116,8 @@ FmStandardViewMode fm_standard_view_get_mode(FmStandardView* fv);
 
 const char* fm_standard_view_mode_to_str(FmStandardViewMode mode);
 FmStandardViewMode fm_standard_view_mode_from_str(const char* str);
+
+FmStandardViewModeSettings fm_standard_view_get_mode_settings(FmStandardView* fv);
 
 G_END_DECLS
 

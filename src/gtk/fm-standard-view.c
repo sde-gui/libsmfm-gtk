@@ -54,51 +54,11 @@
 #include "fm-dnd-dest.h"
 #include "fm-dnd-auto-scroll.h"
 
-typedef enum _FmViewType {
-    FmViewType_Icon,
-    FmViewType_Tree
-} FmViewType;
-
-typedef struct _ModeSettings
-{
-    FmViewType type;
-
-    long icon_size;
-    const char * icon_size_id;
-
-    long   item_width_min;
-    double item_width_mult;
-
-    long   wrap_width_min;
-    double wrap_width_mult;
-
-    long   row_spacing_min;
-    double row_spacing_mult;
-
-    long   col_spacing_min;
-    double col_spacing_mult;
-
-    long   padding_min;
-    double padding_mult;
-
-    long cell_spacing;
-
-    PangoWrapMode wrap_mode;
-    PangoAlignment text_alignment;
-    long text_max_height;
-
-    gboolean horizontal_orientation;
-    ExoIconViewLayoutMode icon_layout_mode;
-
-    gboolean force_thumbnails;
-} ModeSettings;
-
-
 struct _FmStandardView
 {
     GtkScrolledWindow parent;
 
-    ModeSettings mode_settings;
+    FmStandardViewModeSettings mode_settings;
 
     FmStandardViewMode mode;
     GtkSelectionMode sel_mode;
@@ -152,7 +112,7 @@ struct _FmStandardViewClass
     /* void (*column_widths_changed)(); */
 };
 
-static ModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
+static FmStandardViewModeSettings mode_settings[FM_FV_VIEW_MODE_COUNT];
 
 static void fm_standard_view_dispose(GObject *object);
 
@@ -237,7 +197,7 @@ static void on_tree_view_row_activated(GtkTreeView* tv, GtkTreePath* path, GtkTr
 
 static void fm_standard_view_init(FmStandardView *self)
 {
-    ModeSettings m1 = {
+    FmStandardViewModeSettings m1 = {
         .type = FmViewType_Icon,
         .icon_size_id = "big_icon",
         .horizontal_orientation = FALSE,
@@ -257,7 +217,7 @@ static void fm_standard_view_init(FmStandardView *self)
     };
     mode_settings[FM_FV_ICON_VIEW] = m1;
 
-    ModeSettings m2 = {
+    FmStandardViewModeSettings m2 = {
         .type = FmViewType_Icon,
         .icon_size_id = "thumbnail",
         .horizontal_orientation = FALSE,
@@ -277,7 +237,7 @@ static void fm_standard_view_init(FmStandardView *self)
     };
     mode_settings[FM_FV_THUMBNAIL_VIEW] = m2;
 
-    ModeSettings m3 = {
+    FmStandardViewModeSettings m3 = {
         .type = FmViewType_Icon,
         .icon_size_id = "small_icon",
         .horizontal_orientation = TRUE,
@@ -296,7 +256,7 @@ static void fm_standard_view_init(FmStandardView *self)
     };
     mode_settings[FM_FV_COMPACT_VIEW] = m3;
 
-    ModeSettings m4 = {
+    FmStandardViewModeSettings m4 = {
         .type = FmViewType_Tree,
         .icon_size_id = "small_icon",
         .force_thumbnails = FALSE
@@ -2002,4 +1962,13 @@ FmStandardViewMode fm_standard_view_mode_from_str(const char* str)
         if(strcmp(str, view_mode_names[i].name) == 0)
             return view_mode_names[i].mode;
     return (FmStandardViewMode)-1;
+}
+
+FmStandardViewModeSettings fm_standard_view_get_mode_settings(FmStandardView* fv)
+{
+    static FmStandardViewModeSettings _m = {0, };
+    if (!fv)
+        return _m;
+    else
+        return fv->mode_settings;
 }
