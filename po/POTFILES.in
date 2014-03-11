@@ -1,12 +1,12 @@
 data/libsmfm-pref-apps.desktop.in
-data/ui/app-chooser.glade
-data/ui/ask-rename.glade
+[type: gettext/glade]data/ui/app-chooser.ui
+[type: gettext/glade]data/ui/ask-rename.ui
 [type: gettext/glade]data/ui/choose-icon.ui
-data/ui/exec-file.glade
-data/ui/file-prop.glade
-data/ui/filesearch.glade
-data/ui/preferred-apps.glade
-data/ui/progress.glade
+[type: gettext/glade]data/ui/exec-file.ui
+[type: gettext/glade]data/ui/file-prop.ui
+[type: gettext/glade]data/ui/filesearch.ui
+[type: gettext/glade]data/ui/preferred-apps.ui
+[type: gettext/glade]data/ui/progress.ui
 src/gtk/fm-app-chooser-combo-box.c
 src/gtk/fm-app-chooser-dlg.c
 src/gtk/fm-app-menu-view.c
