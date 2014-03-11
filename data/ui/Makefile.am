@@ -2,23 +2,18 @@ NULL=
 
 # GtkBuilder UI definition files
 uidir=$(datadir)/libsmfm/ui
-ui_in_files= \
-	file-prop.glade \
-	progress.glade \
-	ask-rename.glade \
-	app-chooser.glade \
-	preferred-apps.glade \
-	exec-file.glade \
-	filesearch.glade \
-	$(NULL)
-ui_DATA = $(ui_in_files:.glade=.ui) choose-icon.ui
-
-EXTRA_DIST = \
-	$(ui_in_files) \
-	$(ui_DATA) \
+ui_DATA = \
+	file-prop.ui \
+	progress.ui \
+	ask-rename.ui \
+	app-chooser.ui \
+	preferred-apps.ui \
+	exec-file.ui \
+	filesearch.ui \
 	choose-icon.ui \
 	$(NULL)
 
-# Purge GtkBuilder UI files
-.glade.ui:
-	cp $< $@
+EXTRA_DIST = \
+	$(ui_DATA) \
+	$(NULL)
+

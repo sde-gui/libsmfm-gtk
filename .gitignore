@@ -26,7 +26,6 @@ gtk-doc.make
 POTFILES
 LINGUAS
 fm*-marshal.[ch]
-*.ui
 src/actions/*.[ch]
 *.1
 *.desktop
