@@ -4571,6 +4571,8 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
   /* recalculate the layout */
   exo_icon_view_queue_layout (icon_view);
 
+  exo_icon_view_queue_draw (icon_view);
+
   /* if we removed a previous selected item, we need
    * to tell others that we have a new selection.
    */
