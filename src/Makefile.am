@@ -14,6 +14,8 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/actions \
 	-I$(srcdir)/gtk \
 	-I$(srcdir)/demo \
+	-I$(abs_builddir) \
+	-I$(abs_builddir)/gtk \
 	-DPACKAGE_DATA_DIR=\""$(datadir)/libsmfm"\" \
 	-DPACKAGE_UI_DIR=\""$(datadir)/libsmfm/ui"\" \
 	-DPACKAGE_LIB_DIR=\""$(libdir)/libsmfm"\" \
