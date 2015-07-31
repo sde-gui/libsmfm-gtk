@@ -981,7 +981,7 @@ void fm_folder_view_files_clicked(FmFolderView* fv, FmFileInfo * fi, FmFileInfoL
         break;
     case FM_FV_CONTEXT_MENU:
     {
-        if (files)
+        if (files && !fm_file_info_list_is_empty(files))
         {
             FmFileMenu* menu = fm_file_menu_new_for_files(win, files, fm_folder_view_get_cwd(fv), TRUE);
             fm_file_menu_set_folder_func(menu, open_folders, win);
