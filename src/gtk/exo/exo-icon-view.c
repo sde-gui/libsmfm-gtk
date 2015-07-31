@@ -5859,6 +5859,8 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
   if (G_LIKELY (icon_view->priv->search_window != NULL))
     exo_icon_view_search_dialog_hide (icon_view->priv->search_window, icon_view);
 
+  g_signal_emit (icon_view, icon_view_signals[SELECTION_CHANGED], 0);
+
   /* notify listeners */
   g_object_notify (G_OBJECT (icon_view), "model");
 
