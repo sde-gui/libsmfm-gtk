@@ -904,27 +904,6 @@ void fm_link_files(GtkWindow* parent, FmPathList* files, FmPath* dest_dir)
 }
 
 /**
- * fm_trash_files
- * @parent: a window to place progress dialog over it
- * @files: list of files to move to trash
- *
- * Removes files into trash can opening progress dialog if that operation
- * takes some time.
- *
- * Before 0.1.15 this call had different arguments.
- *
- * Since: 0.1.0
- */
-void fm_trash_files(GtkWindow* parent, FmPathList* files)
-{
-    if(!fm_config->confirm_trash || fm_yes_no(parent, NULL, _("Do you want to move the selected files to trash can?"), TRUE))
-    {
-        FmFileOpsJob* job = fm_file_ops_job_new(FM_FILE_OP_TRASH, files);
-        fm_file_ops_job_run_with_progress(parent, job); /* it eats reference! */
-    }
-}
-
-/**
  * fm_untrash_files
  * @parent: a window to place progress dialog over it
  * @files: list of files to restore
@@ -948,6 +927,86 @@ static void fm_delete_files_internal(GtkWindow* parent, FmPathList* files)
     fm_file_ops_job_run_with_progress(parent, job); /* it eats reference! */
 }
 
+static void fm_confirm_n_trash_or_delete_files_internal(GtkWindow* parent, FmPathList* files, gboolean delete)
+{
+    gboolean confirmed = FALSE;
+
+    if(fm_config->confirm_trash)
+    {
+        gchar * message = NULL;
+        const char * title = NULL;
+        if (fm_path_list_get_length(files) == 1)
+        {
+            GList * l = fm_path_list_peek_head_link(files);
+            FmPath* path = (FmPath*)l->data;
+            gchar * file_disp_name = fm_path_display_basename(path);
+
+            message = g_strdup_printf(
+                (delete) ?
+                    _("Are you sure you want to permanently delete '%s'?\nThis action cannot be undone later.") :
+                    _("Are you sure you want to move '%s' to the Trash Can?"),
+                file_disp_name);
+
+            g_free(file_disp_name);
+
+            title = (delete) ?
+                _("Confirm Permanent File Delete"):
+                _("Confirm File Delete");
+        }
+        else
+        {
+            message = g_strdup_printf(
+                (delete) ?
+                    _("Are you sure you want to permanently delete %u selected items?\nThis action cannot be undone later."):
+                    _("Are you sure you want to move %u selected items to the Trash Can?"),
+                fm_path_list_get_length(files));
+
+            title =  (delete) ?
+                _("Confirm Permanent Multiple Files Delete") :
+                _("Confirm Multiple Files Delete");
+        }
+
+        confirmed = fm_yes_no(parent, title, message, TRUE);
+
+        g_free(message);
+    }
+    else
+    {
+        confirmed = TRUE;
+    }
+
+    if (confirmed)
+    {
+        if (delete)
+        {
+            fm_delete_files_internal(parent, files);
+        }
+        else
+        {
+            FmFileOpsJob* job = fm_file_ops_job_new(FM_FILE_OP_TRASH, files);
+            fm_file_ops_job_run_with_progress(parent, job); /* it eats reference! */
+        }
+    }
+
+}
+
+/**
+ * fm_trash_files
+ * @parent: a window to place progress dialog over it
+ * @files: list of files to move to trash
+ *
+ * Removes files into trash can opening progress dialog if that operation
+ * takes some time.
+ *
+ * Before 0.1.15 this call had different arguments.
+ *
+ * Since: 0.1.0
+ */
+void fm_trash_files(GtkWindow* parent, FmPathList* files)
+{
+    fm_confirm_n_trash_or_delete_files_internal(parent, files, FALSE);
+}
+
 /**
  * fm_delete_files
  * @parent: a window to place progress dialog over it
@@ -961,8 +1020,7 @@ static void fm_delete_files_internal(GtkWindow* parent, FmPathList* files)
  */
 void fm_delete_files(GtkWindow* parent, FmPathList* files)
 {
-    if(!fm_config->confirm_del || fm_yes_no(parent, NULL, _("Do you want to delete the selected files?"), TRUE))
-        fm_delete_files_internal(parent, files);
+    fm_confirm_n_trash_or_delete_files_internal(parent, files, TRUE);
 }
 
 /**
