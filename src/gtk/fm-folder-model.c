@@ -672,7 +672,7 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
         if (!fm_folder_is_empty(model->folder))
         {
             long long start_time = g_get_monotonic_time();
-            long long time_slice_before_switching_to_incoming = G_USEC_PER_SEC * 0.2;
+            long long time_slice_before_switching_to_incoming = G_USEC_PER_SEC * 1.2;
             long long items_handled = 0;
             long long items_added_to_incoming = 0;
             gboolean use_incoming = FALSE;
