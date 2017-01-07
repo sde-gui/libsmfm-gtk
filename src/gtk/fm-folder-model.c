@@ -672,14 +672,51 @@ void fm_folder_model_set_folder(FmFolderModel* model, FmFolder* dir)
         if (!fm_folder_is_empty(model->folder))
         {
             long long start_time = g_get_monotonic_time();
+            long long time_slice_before_switching_to_incoming = G_USEC_PER_SEC * 0.2;
+            long long items_handled = 0;
+            long long items_added_to_incoming = 0;
+            gboolean use_incoming = FALSE;
             GList *l;
             FmFileInfoList* files = fm_folder_get_files(model->folder);
             for (l = fm_file_info_list_peek_head_link(files); l; l = l->next)
             {
-                if (g_get_monotonic_time() - start_time < G_USEC_PER_SEC * 0.2)
-                    _fm_folder_model_add_file_real(model, FM_FILE_INFO(l->data));
-                else
+                items_handled++;
+                if (use_incoming)
+                {
                     _fm_folder_model_add_file_to_incoming(model, FM_FILE_INFO(l->data));
+                    items_added_to_incoming++;
+                }
+                else
+                {
+                    _fm_folder_model_add_file_real(model, FM_FILE_INFO(l->data));
+                    if ((g_get_monotonic_time() - start_time) > time_slice_before_switching_to_incoming)
+                    {
+                        use_incoming = TRUE;
+                        g_debug(
+                            "FmFolderModel: %s: %lld items handled in %lld µs before switching to the deferred incoming queue",
+                            __FUNCTION__,
+                            items_handled,
+                            (long long) g_get_monotonic_time() - start_time
+                        );
+                    }
+                }
+            }
+
+            if (use_incoming)
+            {
+                g_debug(
+                    "FmFolderModel: %s: %lld items added to the deferred incoming queue",
+                    __FUNCTION__,
+                    items_added_to_incoming
+                );
+            }
+            else
+            {
+                g_debug(
+                    "FmFolderModel: %s: %lld items added directly to the model",
+                    __FUNCTION__,
+                    items_handled
+                );
             }
         }
     }
