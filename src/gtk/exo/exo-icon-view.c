@@ -3618,7 +3618,7 @@ exo_icon_view_layout_single_line(ExoIconView *icon_view,
                                  gboolean    *redraw_queued)
 {
   ExoIconViewPrivate *priv = icon_view->priv;
-  gint                focus_width = icon_view->priv->style_focus_line_width;
+  gint                focus_width = priv->style_focus_line_width;
   gint                posl = 0;
   gint                i;
 
@@ -4105,7 +4105,7 @@ exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
 
             GdkRectangle * cell_box = &geometry->required_box;
 
-            if (icon_view->priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+            if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
             {
                 cell_area.width = cell_box->width;
                 cell_area.height = item->bounding_box.height - 2 * item_padding;
@@ -4140,7 +4140,7 @@ exo_icon_view_adjust_item_cells_for_line(ExoIconView     *icon_view,
     if (G_UNLIKELY (rtl && priv->orientation == GTK_ORIENTATION_HORIZONTAL))
     {
         int i;
-        for (i = 0; i < icon_view->priv->n_cells; i++)
+        for (i = 0; i < priv->n_cells; i++)
         {
             GdkRectangle * cell_box = &item->cell_geometries[i].required_box;
             cell_box->x =
@@ -4483,6 +4483,7 @@ exo_icon_view_row_inserted (GtkTreeModel *model,
                             GtkTreeIter  *iter,
                             ExoIconView  *icon_view)
 {
+  ExoIconViewPrivate * priv = icon_view->priv;
   ExoIconViewItem *item;
   gint             idx;
 
@@ -4494,10 +4495,10 @@ exo_icon_view_row_inserted (GtkTreeModel *model,
   item->index = idx;
   _exo_icon_view_item_invalidate_size(item);
 
-  INSERT_ITEM_AT_INDEX(icon_view->priv->items, item, idx);
+  INSERT_ITEM_AT_INDEX(priv->items, item, idx);
 
-  if (icon_view->priv->update_indeces < 0 || icon_view->priv->update_indeces > idx)
-    icon_view->priv->update_indeces = idx;
+  if (priv->update_indeces < 0 || priv->update_indeces > idx)
+    priv->update_indeces = idx;
 
   /* recalculate the layout */
   exo_icon_view_queue_layout (icon_view);
@@ -4510,6 +4511,7 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
                            GtkTreePath  *path,
                            ExoIconView  *icon_view)
 {
+  ExoIconViewPrivate * priv = icon_view->priv;
   ExoIconViewItem *item;
   gboolean         changed = FALSE;
   GList           *list, *next;
@@ -4517,33 +4519,33 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
   update_indeces(icon_view);
 
   /* determine the position and the item for the path */
-  list = g_list_nth (icon_view->priv->items.items, gtk_tree_path_get_indices (path)[0]);
+  list = g_list_nth (priv->items.items, gtk_tree_path_get_indices (path)[0]);
   next = list->next;
   item = list->data;
 
-  if (G_UNLIKELY (item == icon_view->priv->edited_item))
+  if (G_UNLIKELY (item == priv->edited_item))
     exo_icon_view_stop_editing (icon_view, TRUE);
 
   /* use the next item (if any) as anchor, else use prev, otherwise reset anchor */
-  if (G_UNLIKELY (item == icon_view->priv->anchor_item))
-    icon_view->priv->anchor_item = (list->next != NULL) ? list->next->data : ((list->prev != NULL) ? list->prev->data : NULL);
+  if (G_UNLIKELY (item == priv->anchor_item))
+    priv->anchor_item = (list->next != NULL) ? list->next->data : ((list->prev != NULL) ? list->prev->data : NULL);
 
   /* use the next item (if any) as cursor, else use prev, otherwise reset cursor */
-  if (G_UNLIKELY (item == icon_view->priv->cursor_item))
-    icon_view->priv->cursor_item = (list->next != NULL) ? list->next->data : ((list->prev != NULL) ? list->prev->data : NULL);
+  if (G_UNLIKELY (item == priv->cursor_item))
+    priv->cursor_item = (list->next != NULL) ? list->next->data : ((list->prev != NULL) ? list->prev->data : NULL);
 
-  if (G_UNLIKELY (item == icon_view->priv->prelit_item))
+  if (G_UNLIKELY (item == priv->prelit_item))
     {
       /* reset the prelit item */
-      icon_view->priv->prelit_item = NULL;
+      priv->prelit_item = NULL;
 
       /* cancel any pending single click timer */
-      if (G_UNLIKELY (icon_view->priv->single_click_timeout_id != 0))
-        g_source_remove (icon_view->priv->single_click_timeout_id);
+      if (G_UNLIKELY (priv->single_click_timeout_id != 0))
+        g_source_remove (priv->single_click_timeout_id);
 
       /* in single click mode, we also reset the cursor when realized */
-      if (G_UNLIKELY (icon_view->priv->single_click && gtk_widget_get_realized (GTK_WIDGET(icon_view))))
-        gdk_window_set_cursor (icon_view->priv->bin_window, NULL);
+      if (G_UNLIKELY (priv->single_click && gtk_widget_get_realized (GTK_WIDGET(icon_view))))
+        gdk_window_set_cursor (priv->bin_window, NULL);
     }
 
   /* check if the selection changed */
@@ -4554,7 +4556,7 @@ exo_icon_view_row_deleted (GtkTreeModel *model,
   g_free (item->cell_geometries);
 
   /* drop the item from the list */
-  icon_view->priv->items.items = g_list_delete_link (icon_view->priv->items.items, list);
+  priv->items.items = g_list_delete_link (priv->items.items, list);
 
   /* release the item */
   g_slice_free (ExoIconViewItem, item);
