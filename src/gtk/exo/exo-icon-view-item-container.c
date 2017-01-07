@@ -33,7 +33,7 @@ do {\
 
 #define COLLECTION_LENGTH(collection) (g_list_length((collection).items))
 
-typedef struct _ItemCollection
+typedef struct _ICollectionIterator
 {
     GList * value;
 } ICollectionIterator;
