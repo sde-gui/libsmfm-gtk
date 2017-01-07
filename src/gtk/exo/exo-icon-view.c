@@ -3851,7 +3851,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
     priv->fairly_layouted_items_at_this_step = 0;
     priv->items_seen = 0;
     priv->faked_geometry_items = 0;
-    priv->layout_deadline_time = g_get_monotonic_time() + G_USEC_PER_SEC * 0.2;
+    priv->layout_deadline_time = g_get_monotonic_time() + G_USEC_PER_SEC * 0.1;
 
     long max_item_width = 0;
     long max_item_height = 0;
