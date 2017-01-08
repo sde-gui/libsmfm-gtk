@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: lxfm\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-01-08 23:56+0700\n"
-"PO-Revision-Date: 2017-01-08 23:58+0700\n"
+"POT-Creation-Date: 2017-01-09 00:07+0700\n"
+"PO-Revision-Date: 2017-01-09 00:11+0700\n"
 "Last-Translator: Vadim Ushakov <igeekless@gmail.com>\n"
 "Language-Team: gnome-cyr\n"
 "Language: ru\n"
@@ -36,9 +36,8 @@ msgid "_Installed Application"
 msgstr "Установленное приложение"
 
 #: ../data/ui/app-chooser.ui.h:4
-#, fuzzy
 msgid "<b>C_ommand line to execute:</b>"
-msgstr "<b>Выполнить в командной строке:</b>"
+msgstr "<b>Выполнить команду:</b>"
 
 #: ../data/ui/app-chooser.ui.h:5
 msgid "_Browse"
@@ -72,7 +71,6 @@ msgid "<b>_Application name (optional, set it to keep association)</b>"
 msgstr ""
 
 #: ../data/ui/app-chooser.ui.h:15
-#, fuzzy
 msgid "C_ustom Command Line"
 msgstr "_Пользовательская команда"
 
@@ -711,6 +709,10 @@ msgstr "Папку"
 msgid "Empty File"
 msgstr "Пустой файл"
 
+#: ../src/gtk/fm-folder-menu.c:133
+msgid "_Filter..."
+msgstr "_Фильтр..."
+
 #: ../src/gtk/fm-folder-menu.c:135
 msgid "_Invert Selection"
 msgstr "Инвертировать выделение"
@@ -720,9 +722,8 @@ msgid "_Sort Files"
 msgstr "_Сортировать файлы"
 
 #: ../src/gtk/fm-folder-menu.c:137
-#, fuzzy
 msgid "_Rename Folder"
-msgstr "Переименовать файл"
+msgstr "П_ереименовать папку"
 
 #: ../src/gtk/fm-folder-menu.c:138
 msgid "Folder Prop_erties"
