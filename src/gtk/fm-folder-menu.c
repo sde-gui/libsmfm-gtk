@@ -130,7 +130,7 @@ static const GtkActionEntry folder_popup_actions[]=
     {"Del2", NULL, NULL, "KP_Delete", NULL, G_CALLBACK(on_trash)},
     {"Remove", GTK_STOCK_REMOVE, NULL, "<Shift>Delete", NULL, G_CALLBACK(on_rm)},
     {"Remove2", NULL, NULL, "<Shift>KP_Delete", NULL, G_CALLBACK(on_rm)},
-    {"SetPattern", NULL, "_Filter...", NULL, NULL, G_CALLBACK(on_set_pattern)},
+    {"SetPattern", NULL, N_("_Filter..."), NULL, NULL, G_CALLBACK(on_set_pattern)},
     {"SelAll", GTK_STOCK_SELECT_ALL, NULL, "<Ctrl>A", NULL, G_CALLBACK(on_select_all)},
     {"InvSel", NULL, N_("_Invert Selection"), "<Ctrl>I", NULL, G_CALLBACK(on_invert_select)},
     {"Sort", NULL, N_("_Sort Files"), NULL, NULL, NULL},
