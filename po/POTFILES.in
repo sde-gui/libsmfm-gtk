@@ -16,6 +16,7 @@ src/gtk/fm-dir-tree-view.c
 src/gtk/fm-dnd-dest.c
 src/gtk/fm-file-menu.c
 src/gtk/fm-file-properties.c
+src/gtk/fm-folder-menu.c
 src/gtk/fm-folder-model.c
 src/gtk/fm-folder-view.c
 src/gtk/fm-gtk-file-launcher.c
