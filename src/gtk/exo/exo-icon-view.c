@@ -3629,6 +3629,19 @@ exo_icon_view_layout_single_line(ExoIconView *icon_view,
         "V" - Y coordinate if layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS, X otherwise.
     */
 
+    /*
+        layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS:
+            1  2  3  4  5
+            6  7  8  9 10
+           11 12
+        layout_mode == EXO_ICON_VIEW_LAYOUT_COLS:
+            1  6 11
+            2  7 12
+            3  8
+            4  9
+            5 10
+    */
+
     gboolean ROWS = (priv->layout_mode == EXO_ICON_VIEW_LAYOUT_ROWS);
 
     gboolean rtl = (gtk_widget_get_direction((GtkWidget *) icon_view) == GTK_TEXT_DIR_RTL);
