@@ -36,15 +36,15 @@
  * ------------------------
  * &lt;placeholder name='ph2'/&gt;
  * ------------------------
+ * AddBookmark
+ * &lt;placeholder name='ph3'/&gt;
+ * ------------------------
  * Cut
  * Copy
  * Paste
  * Del
  * ------------------------
- * AddBookmark
  * Rename
- * ------------------------
- * &lt;placeholder name='ph3'/&gt;
  * ------------------------
  * Prop
  * ]|
@@ -129,20 +129,20 @@ const char base_menu_xml[]=
   "<separator/>"
   "<placeholder name='ph2'/>"
   "<separator/>"
+  "<menuitem action='AddBookmark'/>"
+  "<placeholder name='ph3'/>"
+  "<separator/>"
   "<menuitem action='Cut'/>"
   "<menuitem action='Copy'/>"
   "<menuitem action='Paste'/>"
   "<menuitem action='Del'/>"
   "<separator/>"
-  "<menuitem action='AddBookmark'/>"
   "<menuitem action='Rename'/>"
 /* TODO: implement symlink creation and "send to".
   "<menuitem action='Link'/>"
   "<menu action='SendTo'>"
   "</menu>"
 */
-  "<separator/>"
-  "<placeholder name='ph3'/>"
   "<separator/>"
   "<menuitem action='Prop'/>"
 "</popup>";
