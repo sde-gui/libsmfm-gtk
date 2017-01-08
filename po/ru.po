@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: lxfm\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-03-24 11:52+0700\n"
-"PO-Revision-Date: 2016-03-24 12:12+0700\n"
+"POT-Creation-Date: 2017-01-08 23:36+0700\n"
+"PO-Revision-Date: 2017-01-08 23:42+0700\n"
 "Last-Translator: Vadim Ushakov <igeekless@gmail.com>\n"
 "Language-Team: gnome-cyr\n"
 "Language: ru\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Poedit 1.8.5\n"
+"X-Generator: Poedit 1.8.11\n"
 "X-Poedit-SourceCharset: utf-8\n"
 
 #: ../data/libsmfm-pref-apps.desktop.in.h:1 ../data/ui/preferred-apps.ui.h:1
@@ -328,9 +328,8 @@ msgid "Search Files"
 msgstr "Поиск файлов"
 
 #: ../data/ui/filesearch.ui.h:6
-#, fuzzy
 msgid "<b>File _Name Patterns:</b>"
-msgstr "<b>Маска имени файла:</b>"
+msgstr "<b>Шаблон имени файла:</b>"
 
 #: ../data/ui/filesearch.ui.h:7
 msgid "*"
@@ -345,9 +344,8 @@ msgid "_Use regular expression"
 msgstr "Использовать регулярные выражения"
 
 #: ../data/ui/filesearch.ui.h:10
-#, fuzzy
 msgid "<b>Plac_es to Search:</b>"
-msgstr "<b>Место для поиска</b>"
+msgstr "<b>_Места поиска:</b>"
 
 #: ../data/ui/filesearch.ui.h:11
 msgid "_Search in sub directories"
@@ -366,9 +364,8 @@ msgid "<b>File Type</b>"
 msgstr "<b>Тип файла:</b>"
 
 #: ../data/ui/filesearch.ui.h:15
-#, fuzzy
 msgid "Only search for files of following types:"
-msgstr "Искать файлы только следующих типов"
+msgstr "Искать файлы только следующих типов:"
 
 #: ../data/ui/filesearch.ui.h:16
 msgid "Te_xt files"
@@ -395,9 +392,8 @@ msgid "File _Type"
 msgstr "Тип файла"
 
 #: ../data/ui/filesearch.ui.h:22
-#, fuzzy
 msgid "<b>File Contain_s:</b>"
-msgstr "<b>Файл содержит:</b>"
+msgstr "<b>Файл содер_жит:</b>"
 
 #: ../data/ui/filesearch.ui.h:23
 msgid "C_ontent"
