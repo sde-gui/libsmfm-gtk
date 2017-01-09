@@ -132,6 +132,7 @@ static void on_dnd_src_data_get(FmDndSrc* ds, FmStandardView* fv);
 
 static void on_single_click_changed(FmConfig* cfg, FmStandardView* fv);
 static void on_icon_size_changed(FmConfig* cfg, FmStandardView* fv);
+static void on_show_full_names_changed(FmConfig* cfg, FmStandardView* fv);
 
 static void apply_mode_settings(FmStandardView* self);
 
@@ -278,6 +279,9 @@ static void fm_standard_view_init(FmStandardView *self)
 
     self->highlight_file_names_handler = g_signal_connect(fm_config, "changed::highlight_file_names",
         G_CALLBACK(on_highlight_file_names_changed), self);
+
+    self->show_full_names_handler = g_signal_connect(fm_config, "changed::show_full_names",
+        G_CALLBACK(on_show_full_names_changed), self);
 
     self->mode = -1;
     self->updated_col = -1;
@@ -622,7 +626,7 @@ static void apply_mode_settings(FmStandardView* self)
         orientation = GTK_ORIENTATION_VERTICAL;
     }
 
-    long text_max_height = (fm_config->show_full_names) ? 0 : self->mode_settings.text_max_height;
+    long text_max_height = (fm_config->show_full_names) ? -1000 : self->mode_settings.text_max_height;
 
     if (self->renderer_text)
     {
@@ -686,7 +690,6 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
 
     apply_mode_settings(fv);
     update_icon_size(fv);
-    on_show_full_names_changed(fm_config, fv);
 
     exo_icon_view_set_search_column((ExoIconView*)fv->view, FM_FOLDER_MODEL_COL_NAME);
     g_signal_connect(fv->view, "item-activated", G_CALLBACK(on_icon_view_item_activated), fv);
