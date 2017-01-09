@@ -523,7 +523,6 @@ static void on_icon_size_changed(FmConfig* cfg, FmStandardView* fv)
 static void on_show_full_names_changed(FmConfig* cfg, FmStandardView* fv)
 {
     apply_mode_settings(fv);
-    /* FIXME: does it require redraw request? */
 }
 
 static GtkTreePath* get_drop_path_list_view(FmStandardView* fv, gint x, gint y)
@@ -643,6 +642,7 @@ static void apply_mode_settings(FmStandardView* self)
     {
         exo_icon_view_set_orientation((ExoIconView*)self->view, orientation);
         exo_icon_view_set_layout_mode((ExoIconView*)self->view, self->mode_settings.icon_layout_mode);
+        exo_icon_view_force_relayout((ExoIconView*)self->view);
     }
 }
 
@@ -1232,12 +1232,6 @@ void fm_standard_view_set_mode(FmStandardView* fv, FmStandardViewMode mode)
     {
         g_signal_handler_disconnect(fm_config, fv->icon_size_changed_handler);
         fv->icon_size_changed_handler = 0;
-    }
-
-    if(fv->show_full_names_handler)
-    {
-        g_signal_handler_disconnect(fm_config, fv->show_full_names_handler);
-        fv->show_full_names_handler = 0;
     }
 
     fv->mode = mode;

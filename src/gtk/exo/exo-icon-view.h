@@ -282,6 +282,8 @@ void                  exo_icon_view_scroll_to_path            (ExoIconView      
                                                                gfloat                    row_align,
                                                                gfloat                    col_align);
 
+void                  exo_icon_view_force_relayout            (ExoIconView              *icon_view);
+
 /* Drag-and-Drop support */
 void                  exo_icon_view_enable_model_drag_source  (ExoIconView              *icon_view,
                                                                GdkModifierType           start_button_mask,

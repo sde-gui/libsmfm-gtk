@@ -4195,6 +4195,11 @@ exo_icon_view_invalidate_sizes(ExoIconView *icon_view)
     exo_icon_view_queue_layout(icon_view);
 }
 
+void exo_icon_view_force_relayout(ExoIconView * icon_view)
+{
+    exo_icon_view_invalidate_sizes(EXO_ICON_VIEW(icon_view));
+}
+
 /*****************************************************************************/
 
 static void
