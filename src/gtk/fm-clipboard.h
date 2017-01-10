@@ -25,6 +25,7 @@
 
 #include <gtk/gtk.h>
 #include <libsmfm-core/fm-path.h>
+#include <libsmfm-core/fm-path-list.h>
 
 G_BEGIN_DECLS
 

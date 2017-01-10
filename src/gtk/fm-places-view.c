@@ -39,6 +39,7 @@
 #include <glib/gi18n-lib.h>
 #include "fm-places-view.h"
 #include <libsmfm-core/fm-config.h>
+#include <libsmfm-core/fm-path-list.h>
 #include "fm-gtk-utils.h"
 #include <libsmfm-core/fm-bookmarks.h>
 #include "fm-file-menu.h"
