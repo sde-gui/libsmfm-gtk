@@ -1017,6 +1017,8 @@ static void init_application_list(FmFilePropData* data)
 {
     if(data->single_type && data->mime_type)
     {
+        /* The code from pcmanfm was: */
+#if 0
         if(g_strcmp0(fm_mime_type_get_type(data->mime_type), "inode/directory"))
             fm_app_chooser_combo_box_setup_for_mime_type(data->open_with, data->mime_type);
         else /* shouldn't allow set file association for folders. */
@@ -1026,6 +1028,17 @@ static void init_application_list(FmFilePropData* data)
             data->open_with = NULL;
             data->open_with_label = NULL;
         }
+#endif
+        /* That's not the right way to handle the folder case.
+
+           In case "inode/directory" associated to a wrong application,
+           various 3rd party applications can be affected (well, even struuman-desktop is affected),
+           and there will be absolutely no way to fix the things from GUI.
+
+           So we do allow setting file associations for any mime types, including folders.
+        */
+
+        fm_app_chooser_combo_box_setup_for_mime_type(data->open_with, data->mime_type);
     }
 }
 
