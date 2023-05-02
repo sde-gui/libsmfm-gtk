@@ -503,44 +503,70 @@ static void popup_position_func(GtkMenu *menu, gint *x, gint *y,
 {
     GtkWidget *widget = GTK_WIDGET(user_data);
     GdkWindow *parent_window;
+    GdkScreen *screen;
     GtkAllocation a, ma;
-    gint x2, y2;
+    GdkRectangle mr;
+    gint x2, y2, mon;
     gboolean rtl = (gtk_widget_get_direction(widget) == GTK_TEXT_DIR_RTL);
 
     /* realize menu so we get actual size of it */
     gtk_widget_realize(GTK_WIDGET(menu));
     /* get all the relative coordinates */
     gtk_widget_get_allocation(widget, &a);
-    gtk_widget_get_pointer(widget, &x2, &y2);
+    screen = gtk_widget_get_screen(widget);
+    gdk_window_get_device_position(gtk_widget_get_window(widget),
+                                   gdk_device_manager_get_client_pointer(
+                                        gdk_display_get_device_manager(
+                                            gdk_screen_get_display(screen))),
+                                   &x2, &y2, NULL);
     gtk_widget_get_allocation(GTK_WIDGET(menu), &ma);
-    /* position menu inside widget */
-    if(rtl) /* RTL */
-        x2 = CLAMP(x2, 1, ma.width + a.width - 1);
-    else /* LTR */
-        x2 = CLAMP(x2, 1 - ma.width, a.width - 1);
-    y2 = CLAMP(y2, 1 - ma.height, a.height - 1);
-    /* get absolute coordinate of parent window - we got coords relative to it */
     parent_window = gtk_widget_get_parent_window(widget);
-    if(parent_window)
+    /* get absolute coordinate of parent window - we got coords relative to it */
+    if (parent_window)
         gdk_window_get_origin(parent_window, x, y);
     else
-        /* desktop has no parent window so parent coords will be 0;0 */
-        *x = *y = 0;
+    {
+        /* desktop has no parent window so parent coords will be from geom */
+        mon = gdk_screen_get_monitor_at_window(screen, gtk_widget_get_window(widget));
+        gdk_screen_get_monitor_geometry(screen, mon, &mr);
+        *x = mr.x;
+        *y = mr.y;
+    }
+    /* position menu inside widget */
+    if(rtl) /* RTL */
+        x2 = CLAMP(x2, a.x + 1, a.x + ma.width + a.width - 1);
+    else /* LTR */
+        x2 = CLAMP(x2, a.x + 1 - ma.width, a.x + a.width - 1);
+    y2 = CLAMP(y2, a.y + 1 - ma.height, a.y + a.height - 1);
     /* calculate desired position for menu */
-    *x += a.x + x2;
-    *y += a.y + y2;
+    *x += x2;
+    *y += y2;
+    /* get monitor geometry at the pointer: for desktop we already have it */
+    if (parent_window)
+    {
+        mon = gdk_screen_get_monitor_at_point(screen, *x, *y);
+        gdk_screen_get_monitor_geometry(screen, mon, &mr);
+    }
     /* limit coordinates so menu will be not positioned outside of screen */
-    /* FIXME: honor monitor */
     if(rtl) /* RTL */
     {
-        x2 = gdk_screen_width();
-        *x = CLAMP(*x, MIN(ma.width, x2), x2);
+        x2 = mr.x + mr.width;
+        if (*x < mr.x + ma.width) /* out of monitor */
+            *x = MIN(*x + ma.width, x2); /* place menu right to cursor */
+        else
+            *x = MIN(*x, x2);
     }
     else /* LTR */
     {
-        *x = CLAMP(*x, 0, MAX(0, gdk_screen_width() - ma.width));
+        if (*x + ma.width > mr.x + mr.width) /* out of monitor */
+            *x = MAX(mr.x, *x - ma.width); /* place menu left to cursor */
+        else
+            *x = MAX(mr.x, *x); /* place menu right to cursor */
     }
-    *y = CLAMP(*y, 0, MAX(0, gdk_screen_height() - ma.height));
+    if (*y + ma.height > mr.y + mr.height) /* out of monitor */
+        *y = MAX(mr.y, *y - ma.height); /* place menu above cursor */
+    else
+        *y = MAX(mr.y, *y); /* place menu below cursor */
 }
 
 void fm_folder_view_show_popup(FmFolderView* fv)
