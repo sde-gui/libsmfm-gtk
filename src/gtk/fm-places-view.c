@@ -64,6 +64,7 @@ static gboolean on_button_release(GtkWidget* view, GdkEventButton* evt);
 static void on_mount(GtkAction* act, gpointer user_data);
 static void on_umount(GtkAction* act, gpointer user_data);
 static void on_eject(GtkAction* act, gpointer user_data);
+static void on_show_volume_property(GtkAction* act, gpointer user_data);
 
 static void on_remove_bm(GtkAction* act, gpointer user_data);
 static void on_rename_bm(GtkAction* act, gpointer user_data);
@@ -92,6 +93,17 @@ static const char vol_menu_xml[]=
   "<menuitem action='Mount'/>"
   "<menuitem action='Unmount'/>"
   "<menuitem action='Eject'/>"
+  "<menu action='Debug'>"
+    "<menu action='ShowVolumeProperty'>"
+      "<menuitem action='VolumeNameShow_name'/>"
+      "<menuitem action='VolumeNameShow_identifier_label'/>"
+      "<menuitem action='VolumeNameShow_identifier_unix_device'/>"
+      "<menuitem action='VolumeNameShow_identifier_uuid'/>"
+      "<menuitem action='VolumeNameShow_identifier_class'/>"
+      "<menuitem action='VolumeNameShow_identifier_nfs_mount'/>"
+      "<menuitem action='VolumeNameShow_sort_key'/>"
+    "</menu>"
+  "</menu>"
   "</placeholder>"
 "</popup>";
 
@@ -106,7 +118,17 @@ static GtkActionEntry vol_menu_actions[]=
 {
     {"Mount", NULL, N_("_Mount Volume"), NULL, NULL, G_CALLBACK(on_mount)},
     {"Unmount", NULL, N_("_Unmount Volume"), NULL, NULL, G_CALLBACK(on_umount)},
-    {"Eject", NULL, N_("_Eject Removable Media"), NULL, NULL, G_CALLBACK(on_eject)}
+    {"Eject", NULL, N_("_Eject Removable Media"), NULL, NULL, G_CALLBACK(on_eject)},
+
+    {"Debug", NULL, N_("Debug"), NULL, NULL, NULL},
+    {"ShowVolumeProperty", NULL, N_("Show Volume Property"), NULL, NULL, NULL},
+    {"VolumeNameShow_name", NULL, N_("name"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_label", NULL, N_("id:label"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_unix_device", NULL, N_("id:unix-device"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_uuid", NULL, N_("id:uuid"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_class", NULL, N_("id:class"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_nfs_mount", NULL, N_("id:nfs-mount"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_sort_key", NULL, N_("sort_key"), NULL, NULL, G_CALLBACK(on_show_volume_property)}
 };
 
 static const char bookmark_menu_xml[]=
@@ -775,6 +797,12 @@ static GtkWidget* place_item_get_menu(FmPlacesItem* item)
             act = gtk_action_group_get_action(act_grp, "Eject");
             gtk_action_set_visible(act, FALSE);
         }
+
+        if (!_fm_enable_debug_ui())
+        {
+            act = gtk_action_group_get_action(act_grp, "Debug");
+            gtk_action_set_visible(act, FALSE);
+        }
     }
     else if(fm_places_item_get_type(item) == FM_PLACES_ITEM_MOUNT)
     {
@@ -979,6 +1007,15 @@ static void on_eject(GtkAction* act, gpointer user_data)
         /* FIXME: get the toplevel window here */
         fm_eject_volume(NULL, fm_places_item_get_volume(item), TRUE);
     }
+}
+
+static void on_show_volume_property(GtkAction* act, gpointer user_data)
+{
+    FmPlacesItem* item = (FmPlacesItem*)user_data;
+    FmPlacesModel* model = fm_places_item_get_model(item);
+    const char* property_name = gtk_action_get_label(act);
+    gboolean visibility = !_fm_places_model_debug_get_volume_property_visibility(model, property_name);
+    _fm_places_model_debug_set_volume_property_visibility(model, property_name, visibility);
 }
 
 static void on_remove_bm(GtkAction* act, gpointer user_data)

@@ -1265,3 +1265,14 @@ void fm_widget_menu_fix_tooltips(GtkMenu *menu)
     if(tooltips_enabled)
         assign_tooltips_from_actions(GTK_WIDGET(menu));
 }
+
+gboolean _fm_enable_debug_ui(void)
+{
+    static int enable_debug_ui = -1;
+    if (enable_debug_ui == -1)
+    {
+        const char* env = g_getenv("LIBSMFM_ENABLE_DEBUG_UI");
+        enable_debug_ui = (g_strcmp0(env, "1") == 0) ? 1 : 0;
+    }
+    return (gboolean) enable_debug_ui;
+}

@@ -71,6 +71,7 @@ struct _FmPlacesItem
         GMount* mount; /* used if type == FM_PLACES_ITEM_MOUNT */
         FmBookmarkItem* bm_item; /* used if type == FM_PLACES_ITEM_PATH */
     };
+    FmPlacesModel* model;
 };
 
 struct _FmPlacesModel
@@ -90,9 +91,12 @@ struct _FmPlacesModel
     guint places_desktop_change_handler;
     guint places_trash_change_handler;
     guint places_applications_change_handler;
+    guint update_all_volumes_handler;
     GdkPixbuf* eject_icon;
 
     GSList* jobs;
+
+    GHashTable *volume_property_visibility;
 };
 
 struct _FmPlacesModelClass
@@ -213,6 +217,42 @@ finished:
     g_object_unref(job);
 }
 
+static char* make_disp_name_for_volume(FmPlacesModel* model, FmPlacesItem* item)
+{
+    if (model->volume_property_visibility == NULL)
+        return g_volume_get_name(item->volume);
+
+    const char** property_names = _fm_places_model_debug_get_volume_property_list(model);
+    char* name = NULL;
+
+    for (const char **p_property_name = property_names; *p_property_name ; p_property_name++)
+    {
+        const char* property_name = *p_property_name;
+        if (!_fm_places_model_debug_get_volume_property_visibility(model, property_name))
+            continue;
+
+        char * next_part = _fm_places_item_debug_get_volume_property(item, property_name);
+        if (!next_part)
+            next_part = g_strdup("(null)");
+        if (!name)
+        {
+            name = next_part;
+        }
+        else
+        {
+            char* new_name = g_strjoin("; ", name, next_part, NULL);
+            g_free(next_part);
+            g_free(name);
+            name = new_name;
+        }
+    }
+
+    if (!name)
+        name = g_volume_get_name(item->volume);
+
+    return name;
+}
+
 static void update_volume_or_mount(FmPlacesModel* model, FmPlacesItem* item, GtkTreeIter* it, FmFileInfoJob* job)
 {
     GIcon* gicon;
@@ -223,7 +263,7 @@ static void update_volume_or_mount(FmPlacesModel* model, FmPlacesItem* item, Gtk
 
     if(item->type == FM_PLACES_ITEM_VOLUME)
     {
-        name = g_volume_get_name(item->volume);
+        name = make_disp_name_for_volume(model, item);
         gicon = g_volume_get_icon(item->volume);
         mount = g_volume_get_mount(item->volume);
     }
@@ -288,6 +328,7 @@ static inline FmPlacesItem* add_new_item(GtkListStore* model, FmPlacesType type,
     GtkTreeIter next_it;
     FmPlacesItem* item = g_slice_new0(FmPlacesItem);
 
+    item->model = FM_PLACES_MODEL(model);
     item->fi = fm_file_info_new();
     item->type = type;
     if(at)
@@ -311,6 +352,7 @@ static FmPlacesItem* new_path_item(GtkListStore* model, GtkTreeIter* it,
     GdkPixbuf* pix;
     GtkTreeIter next_it;
 
+    item->model = FM_PLACES_MODEL(model);
     item->fi = fm_file_info_new();
     item->type = FM_PLACES_ITEM_PATH;
     item->id = id;
@@ -1129,6 +1171,81 @@ gboolean fm_places_model_path_is_places(FmPlacesModel* model, GtkTreePath* tp)
     return ret;
 }
 
+/******************************************************************************/
+
+static gboolean update_all_volumes(gpointer user_data)
+{
+    FmPlacesModel* model = FM_PLACES_MODEL(user_data);
+    model->update_all_volumes_handler = 0;
+
+    GtkTreeIter it;
+    if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(model), &it))
+    {
+        do
+        {
+            FmPlacesItem* item;
+            gtk_tree_model_get(GTK_TREE_MODEL(model), &it, FM_PLACES_MODEL_COL_INFO, &item, -1);
+            if (item && item->type == FM_PLACES_ITEM_VOLUME)
+            {
+                update_volume_or_mount(model, item, &it, NULL);
+            }
+        } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(model), &it));
+    }
+
+    return FALSE;
+}
+
+static void update_all_volumes_forcibly(FmPlacesModel* model)
+{
+    if (model->update_all_volumes_handler)
+        g_source_remove(model->update_all_volumes_handler);
+    model->update_all_volumes_handler = g_idle_add(update_all_volumes, model);
+}
+
+
+gboolean _fm_places_model_debug_get_volume_property_visibility(FmPlacesModel* model, const char* property_name)
+{
+    if (model->volume_property_visibility == NULL)
+    {
+        return g_strcmp0(property_name, "name") == 0;
+    }
+    return g_hash_table_lookup (model->volume_property_visibility, property_name) != 0;
+}
+
+void _fm_places_model_debug_set_volume_property_visibility(FmPlacesModel* model, const char* property_name, gboolean visibility)
+{
+    if (model->volume_property_visibility == NULL)
+    {
+        model->volume_property_visibility = g_hash_table_new_full(
+            g_str_hash,
+            g_str_equal,
+            g_free,
+            NULL
+        );
+        g_hash_table_insert(model->volume_property_visibility, g_strdup("name"), "true");
+    }
+
+    g_hash_table_insert(model->volume_property_visibility, g_strdup(property_name), visibility ? "true" : NULL);
+    update_all_volumes_forcibly(model);
+}
+
+const char** _fm_places_model_debug_get_volume_property_list(FmPlacesModel* model)
+{
+    static const char *property_names[] = {
+        "name",
+        "id:label",
+        "id:unix-device",
+        "id:uuid",
+        "id:class",
+        "id:nfs-mount",
+        "sort_key",
+        NULL
+    };
+    return property_names;
+}
+
+/******************************************************************************/
+
 static gboolean row_draggable(GtkTreeDragSource* drag_source, GtkTreePath* tp)
 {
     FmPlacesModel* model;
@@ -1253,9 +1370,21 @@ static void fm_places_model_dispose(GObject *object)
         self->trash_idle_handler = 0;
     }
 
+    if (self->update_all_volumes_handler)
+    {
+        g_source_remove(self->update_all_volumes_handler);
+        self->update_all_volumes_handler = 0;
+    }
+
     if(self->eject_icon)
         g_object_unref(self->eject_icon);
     self->eject_icon = NULL;
+
+    if (self->volume_property_visibility)
+    {
+        g_hash_table_unref(self->volume_property_visibility);
+        self->volume_property_visibility = NULL;
+    }
 
     G_OBJECT_CLASS(fm_places_model_parent_class)->dispose(object);
 }
@@ -1343,6 +1472,22 @@ gboolean fm_places_model_get_iter_by_fm_path(FmPlacesModel* model, GtkTreeIter* 
     return FALSE;
 }
 
+/******************************************************************************/
+
+/**
+ * fm_places_item_get_model
+ * @item: a places model item
+ *
+ * Retrieves model this @item belongs to.
+ *
+ * Returns: (transfer none): pointer to FmPlacesModel.
+ *
+ * Since: 1.2.0
+ */
+FmPlacesModel* fm_places_item_get_model(FmPlacesItem* item)
+{
+    return item->model;
+}
 
 /**
  * fm_places_item_get_type
@@ -1471,4 +1616,21 @@ FmPath* fm_places_item_get_path(FmPlacesItem* item)
 FmBookmarkItem* fm_places_item_get_bookmark_item(FmPlacesItem* item)
 {
     return item->type == FM_PLACES_ITEM_PATH ? item->bm_item : NULL;
+}
+
+char* _fm_places_item_debug_get_volume_property(FmPlacesItem* item, const char* property_name)
+{
+    if (item->type != FM_PLACES_ITEM_VOLUME)
+        return NULL;
+
+    if (g_strcmp0(property_name, "name") == 0)
+        return g_volume_get_name(item->volume);
+
+    if (g_str_has_prefix(property_name, "id:"))
+        return g_volume_get_identifier(item->volume, property_name + 3);
+
+    if (g_strcmp0(property_name, "sort_key") == 0)
+        return g_strdup(g_volume_get_sort_key(item->volume));
+
+    return NULL;
 }

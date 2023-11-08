@@ -81,6 +81,10 @@ typedef enum
 
 typedef struct _FmPlacesItem FmPlacesItem;
 
+/******************************************************************************/
+
+/* FmPlacesModel methods */
+
 GType fm_places_model_get_type        (void);
 FmPlacesModel* fm_places_model_new            (void);
 
@@ -102,6 +106,15 @@ void fm_places_model_mount_indicator_cell_data_func(GtkCellLayout *cell_layout,
 
 gboolean fm_places_model_get_iter_by_fm_path(FmPlacesModel* model, GtkTreeIter* iter, FmPath* path);
 
+gboolean _fm_places_model_debug_get_volume_property_visibility(FmPlacesModel* model, const char* property_name);
+void     _fm_places_model_debug_set_volume_property_visibility(FmPlacesModel* model, const char* property_name, gboolean visibility);
+const char** _fm_places_model_debug_get_volume_property_list(FmPlacesModel* model);
+
+/******************************************************************************/
+
+/* FmPlacesItem methods */
+
+FmPlacesModel* fm_places_item_get_model(FmPlacesItem* item);
 
 FmPlacesType fm_places_item_get_type(FmPlacesItem* item);
 
@@ -118,6 +131,8 @@ GMount* fm_places_item_get_mount(FmPlacesItem* item);
 FmPath* fm_places_item_get_path(FmPlacesItem* item);
 
 FmBookmarkItem* fm_places_item_get_bookmark_item(FmPlacesItem* item);
+
+char* _fm_places_item_debug_get_volume_property(FmPlacesItem* item, const char* property_name);
 
 G_END_DECLS
 
