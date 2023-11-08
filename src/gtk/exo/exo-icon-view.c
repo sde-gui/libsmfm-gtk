@@ -3837,8 +3837,11 @@ restart: ;
     return redraw_queued;
 }
 
+/******************************************************************************/
 
-
+/* Performs incremental layout.
+   Returns TRUE if there's no items left to handle.
+ */
 static gboolean
 exo_icon_view_layout (ExoIconView *icon_view)
 {
