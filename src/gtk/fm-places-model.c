@@ -274,7 +274,10 @@ static void update_volume_or_mount(FmPlacesModel* model, FmPlacesItem* item, Gtk
     }
 
     pix = pixbuf_for_pane_icon(item->icon);
-    gtk_list_store_set(GTK_LIST_STORE(model), it, FM_PLACES_MODEL_COL_ICON, pix, FM_PLACES_MODEL_COL_LABEL, name, -1);
+    gtk_list_store_set(GTK_LIST_STORE(model), it,
+                       FM_PLACES_MODEL_COL_ICON, pix,
+                       FM_PLACES_MODEL_COL_LABEL, name,
+                       -1);
     g_object_unref(pix);
     g_free(name);
 }
@@ -335,7 +338,8 @@ _added:
     gtk_list_store_set(model, it,
                        FM_PLACES_MODEL_COL_INFO, item,
                        FM_PLACES_MODEL_COL_LABEL, label,
-                       FM_PLACES_MODEL_COL_ICON, pix, -1);
+                       FM_PLACES_MODEL_COL_ICON, pix,
+                       -1);
     g_object_unref(pix);
     fm_file_info_set_path(item->fi, path);
     if(job)
@@ -578,7 +582,8 @@ static void add_bookmarks(FmPlacesModel* model, FmFileInfoJob* job)
         item->id = FM_PLACES_ID_OTHER;
         gtk_list_store_set(GTK_LIST_STORE(model), &it,
                            FM_PLACES_MODEL_COL_ICON, pix,
-                           FM_PLACES_MODEL_COL_LABEL, bm->name, -1);
+                           FM_PLACES_MODEL_COL_LABEL, bm->name,
+                           -1);
     }
     g_list_free(bms);
     g_object_unref(folder_pix);
