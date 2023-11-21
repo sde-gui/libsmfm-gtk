@@ -2,6 +2,95 @@
 <interface>
   <requires lib="gtk+" version="2.18"/>
   <!-- interface-naming-policy toplevel-contextual -->
+  <object class="GtkListStore" id="flags_set_dir_model">
+    <columns>
+      <!-- column-name bit -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">---</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">None</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Sticky</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Set GID</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Sticky &amp; set GID</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="flags_set_file_model">
+    <columns>
+      <!-- column-name bit -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">---</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">None</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Set UID</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Set GID</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Set UID &amp; GID</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="read_access_model">
+    <columns>
+      <!-- column-name who -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">---</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Only owner</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Only owner and group</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Anyone</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="user_access_model">
+    <columns>
+      <!-- column-name who -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">---</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Nobody</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Only owner</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Only owner and group</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Anyone</col>
+      </row>
+    </data>
+  </object>
   <object class="GtkDialog" id="dlg">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">File Properties</property>
@@ -78,7 +167,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="border_width">4</property>
-                    <property name="n_rows">13</property>
+                    <property name="n_rows">14</property>
                     <property name="n_columns">3</property>
                     <property name="column_spacing">12</property>
                     <property name="row_spacing">6</property>
@@ -375,15 +464,16 @@
                       <object class="GtkLabel" id="mtime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup">The last time the file’s contents were modified.</property>
                         <property name="xalign">1</property>
-                        <property name="label" translatable="yes">&lt;b&gt;Last Modification:&lt;/b&gt;</property>
+                        <property name="label" translatable="yes">&lt;b&gt;Modified:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">11</property>
-                        <property name="bottom_attach">12</property>
+                        <property name="top_attach">12</property>
+                        <property name="bottom_attach">13</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -398,8 +488,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">11</property>
-                        <property name="bottom_attach">12</property>
+                        <property name="top_attach">12</property>
+                        <property name="bottom_attach">13</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -408,15 +498,16 @@
                       <object class="GtkLabel" id="atime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup">The last time a file was accessed. This value may be inaccurate depending on the file system mount options. Refer to &lt;b&gt;mount(8)&lt;/b&gt; manual page for more information about &lt;b&gt;noatime&lt;/b&gt;, &lt;b&gt;relatime&lt;/b&gt; and &lt;b&gt;strictatime&lt;/b&gt; options.</property>
                         <property name="xalign">1</property>
-                        <property name="label" translatable="yes">&lt;b&gt;Last Access:&lt;/b&gt;</property>
+                        <property name="label" translatable="yes">&lt;b&gt;Accessed:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                       </object>
                       <packing>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">12</property>
-                        <property name="bottom_attach">13</property>
+                        <property name="top_attach">13</property>
+                        <property name="bottom_attach">14</property>
                         <property name="x_options">GTK_SHRINK | GTK_FILL</property>
                         <property name="y_options"/>
                       </packing>
@@ -431,8 +522,8 @@
                       <packing>
                         <property name="left_attach">2</property>
                         <property name="right_attach">3</property>
-                        <property name="top_attach">12</property>
-                        <property name="bottom_attach">13</property>
+                        <property name="top_attach">13</property>
+                        <property name="bottom_attach">14</property>
                         <property name="y_options"/>
                       </packing>
                     </child>
@@ -476,6 +567,41 @@
                         <property name="bottom_attach">5</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="ctime">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">0</property>
+                        <property name="selectable">True</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">2</property>
+                        <property name="right_attach">3</property>
+                        <property name="top_attach">11</property>
+                        <property name="bottom_attach">12</property>
+                        <property name="y_options"/>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="ctime_label">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_markup">The last time metadata related to a file was changed. This includes permissions change, file owner change, creation and deletion of hard links.
+&lt;b&gt;Note:&lt;/b&gt;
+On some systems (like Unix) this field is the time of the last metadata change, and, on others (like Windows), it's the file creation time.</property>
+                        <property name="xalign">1</property>
+                        <property name="label" translatable="yes">&lt;b&gt;Created/Metadata Updated:&lt;/b&gt;</property>
+                        <property name="use_markup">True</property>
+                        <property name="use_underline">True</property>
+                      </object>
+                      <packing>
+                        <property name="right_attach">2</property>
+                        <property name="top_attach">11</property>
+                        <property name="bottom_attach">12</property>
+                        <property name="x_options">GTK_SHRINK | GTK_FILL</property>
+                        <property name="y_options"/>
                       </packing>
                     </child>
                   </object>
@@ -850,94 +976,5 @@
       <action-widget response="-6">cancel</action-widget>
       <action-widget response="-5">ok</action-widget>
     </action-widgets>
-  </object>
-  <object class="GtkListStore" id="flags_set_dir_model">
-    <columns>
-      <!-- column-name bit -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">---</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">None</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Sticky</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Set GID</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Sticky &amp; set GID</col>
-      </row>
-    </data>
-  </object>
-  <object class="GtkListStore" id="flags_set_file_model">
-    <columns>
-      <!-- column-name bit -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">---</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">None</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Set UID</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Set GID</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Set UID &amp; GID</col>
-      </row>
-    </data>
-  </object>
-  <object class="GtkListStore" id="read_access_model">
-    <columns>
-      <!-- column-name who -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">---</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Only owner</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Only owner and group</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Anyone</col>
-      </row>
-    </data>
-  </object>
-  <object class="GtkListStore" id="user_access_model">
-    <columns>
-      <!-- column-name who -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">---</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Nobody</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Only owner</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Only owner and group</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Anyone</col>
-      </row>
-    </data>
   </object>
 </interface>

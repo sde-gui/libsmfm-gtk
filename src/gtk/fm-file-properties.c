@@ -45,8 +45,9 @@
  * - GtkComboBox (id open_with) : label: "Open with", id open_with_label
  * - GtkLabel (id total_size)   : label: "Total Size of Files", id total_size_label
  * - GtkLabel (id size_on_disk) : label: "Size on Disk", id size_on_disk_label
- * - GtkLabel (id mtime)        : label: "Last Modification", id mtime_label
- * - GtkLabel (id atime)        : label: "Last Access", id atime_label
+ * - GtkLabel (id mtime)        : label: "Modified", id mtime_label
+ * - GtkLabel (id atime)        : label: "Accessed", id atime_label
+ * - GtkLabel (id ctime)        : label: "Created/Metadata Updated", id ctime_label (since 1.2.0)
  *
  * Tab 2: id permissions_tab, contains items inside:
  * - GtkEntry (id owner)        : label: "Owner", id owner_label
@@ -85,6 +86,8 @@
 #include "fm-icon-pixbuf.h"
 
 #include "fm-app-chooser-combo-box.h"
+
+#include "internals/time-interval-renderer.h"
 
 #define     UI_FILE             PACKAGE_UI_DIR"/file-prop.ui"
 #define     GET_WIDGET(transform,name) data->name = transform(gtk_builder_get_object(builder, #name))
@@ -158,6 +161,7 @@ struct _FmFilePropData
     GtkLabel* size_on_disk;
     GtkLabel* mtime;
     GtkLabel* atime;
+    GtkLabel* ctime;
 
     /* Permissions page */
     GtkWidget* permissions_tab;
@@ -792,34 +796,6 @@ static void update_permissions(FmFilePropData* data)
     }
 }
 
-static void set_time_interval(GtkLabel * label, time_t min_time, time_t max_time)
-{
-    struct tm tm;
-    char buf1[256], buf2[256];
-
-    localtime_r(&min_time, &tm);
-    strftime(buf1, sizeof(buf1), "%x %R", &tm);
-
-    if (min_time == 0)
-    {
-        gtk_label_set_text(label, _("N/A"));
-    }
-    else if (min_time == max_time)
-    {
-        gtk_label_set_text(label, buf1);
-    }
-    else
-    {
-        localtime_r(&max_time, &tm);
-        strftime(buf2, sizeof(buf2), "%x %R", &tm);
-
-        gchar * s = g_strdup_printf(_("%s ... %s"), buf1, buf2);
-        gtk_label_set_text(label, s);
-        g_free(s);
-    }
-
-}
-
 static void on_icon_theme_changed(GtkIconTheme* theme, gpointer user_data)
 {
     FmFilePropData * data = (FmFilePropData *) user_data;
@@ -967,8 +943,13 @@ static void update_ui(FmFilePropData* data)
     }
 
     FmPath * common_parent = fm_path_get_parent(fm_file_info_get_path(data->fi));
-    time_t min_atime = fm_file_info_get_atime(data->fi), max_atime = min_atime;
-    time_t min_mtime = fm_file_info_get_mtime(data->fi), max_mtime = min_mtime;
+
+    TimeIntervalRenderer mtime_renderer;
+    TimeIntervalRenderer atime_renderer;
+    TimeIntervalRenderer ctime_renderer;
+    time_interval_renderer_init(&mtime_renderer, fm_file_info_get_mtime(data->fi));
+    time_interval_renderer_init(&atime_renderer, fm_file_info_get_atime(data->fi));
+    time_interval_renderer_init(&ctime_renderer, fm_file_info_get_ctime(data->fi));
 
     GList * l;
     for (l = fm_file_info_list_peek_head_link(data->files)->next; l; l = l->next)
@@ -978,17 +959,9 @@ static void update_ui(FmFilePropData* data)
         if (!fm_path_equal(fm_path_get_parent(fm_file_info_get_path(fi)), common_parent))
             common_parent = NULL;
 
-        time_t atime = fm_file_info_get_atime(fi);
-        if (min_atime > atime)
-            min_atime = atime;
-        if (max_atime < atime)
-            max_atime = atime;
-
-        time_t mtime = fm_file_info_get_mtime(fi);
-        if (min_mtime > mtime)
-            min_mtime = mtime;
-        if (max_mtime < mtime)
-            max_mtime = mtime;
+        time_interval_renderer_inject(&mtime_renderer, fm_file_info_get_mtime(fi));
+        time_interval_renderer_inject(&atime_renderer, fm_file_info_get_atime(fi));
+        time_interval_renderer_inject(&ctime_renderer, fm_file_info_get_ctime(fi));
     }
 
     gchar * parent_str = common_parent ? fm_path_display_name(common_parent, TRUE) : NULL;
@@ -1005,8 +978,10 @@ static void update_ui(FmFilePropData* data)
         gtk_label_set_text(data->dir, "");
     }
 
-    set_time_interval(data->atime, min_atime, max_atime);
-    set_time_interval(data->mtime, min_mtime, max_mtime);
+    const char * time_format = "%x %R";
+    time_interval_renderer_render(&mtime_renderer, data->mtime, time_format);
+    time_interval_renderer_render(&atime_renderer, data->atime, time_format);
+    time_interval_renderer_render(&ctime_renderer, data->ctime, time_format);
 
     update_permissions(data);
 
@@ -1105,6 +1080,7 @@ GtkDialog* fm_file_properties_widget_new(FmFileInfoList* files, gboolean topleve
     GET_WIDGET(GTK_LABEL,size_on_disk);
     GET_WIDGET(GTK_LABEL,mtime);
     GET_WIDGET(GTK_LABEL,atime);
+    GET_WIDGET(GTK_LABEL,ctime);
 
     GET_WIDGET(GTK_WIDGET,permissions_tab);
     GET_WIDGET(GTK_ENTRY,owner);
