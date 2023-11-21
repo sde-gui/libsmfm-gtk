@@ -6,17 +6,17 @@ msgid ""
 msgstr ""
 "Project-Id-Version: lxfm\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-01-09 00:07+0700\n"
-"PO-Revision-Date: 2017-01-09 00:11+0700\n"
-"Last-Translator: Vadim Ushakov <igeekless@gmail.com>\n"
+"POT-Creation-Date: 2023-11-21 22:41+0700\n"
+"PO-Revision-Date: 2023-11-21 22:58+0700\n"
+"Last-Translator: Vadim Ushakov <wandrien.dev@gmail.com>\n"
 "Language-Team: gnome-cyr\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Poedit 1.8.11\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: Poedit 3.4.1\n"
 "X-Poedit-SourceCharset: utf-8\n"
 
 #: ../data/libsmfm-pref-apps.desktop.in.h:1 ../data/ui/preferred-apps.ui.h:1
@@ -49,7 +49,7 @@ msgstr "_Выполнить в эмуляторе терминала"
 
 #: ../data/ui/app-chooser.ui.h:7
 msgid "_Keep terminal window open after command execution"
-msgstr ""
+msgstr "_Оставить окно терминала открытым после выполнения команды"
 
 #: ../data/ui/app-chooser.ui.h:9
 #, no-c-format
@@ -98,7 +98,7 @@ msgstr "_Заменить"
 msgid ""
 "<b>There is already a file with the same name in this location.</b>\n"
 "\n"
-"Do you want to replace the existing file"
+"Do you want to replace the existing file?"
 msgstr ""
 "<b>Файл с таким именем уже существует в выбранном каталоге.</b>\n"
 "\n"
@@ -145,165 +145,165 @@ msgid "Execute in _Terminal"
 msgstr "Запустить файл в _терминале"
 
 #: ../data/ui/file-prop.ui.h:1
+msgid "---"
+msgstr "---"
+
+#: ../data/ui/file-prop.ui.h:2
+msgid "None"
+msgstr "Нет"
+
+#: ../data/ui/file-prop.ui.h:3
+msgid "Sticky"
+msgstr "\"Липкий\""
+
+#: ../data/ui/file-prop.ui.h:4
+msgid "Set GID"
+msgstr "Установить GID"
+
+#: ../data/ui/file-prop.ui.h:5
+msgid "Sticky & set GID"
+msgstr "\"Липкий\" и установить GID"
+
+#: ../data/ui/file-prop.ui.h:6
+msgid "Set UID"
+msgstr "Установить UID"
+
+#: ../data/ui/file-prop.ui.h:7
+msgid "Set UID & GID"
+msgstr "Установить UID и GID"
+
+#: ../data/ui/file-prop.ui.h:8
+msgid "Only owner"
+msgstr "Только владелец"
+
+#: ../data/ui/file-prop.ui.h:9
+msgid "Only owner and group"
+msgstr "Только владелец и группа"
+
+#: ../data/ui/file-prop.ui.h:10
+msgid "Anyone"
+msgstr "Все"
+
+#: ../data/ui/file-prop.ui.h:11
+msgid "Nobody"
+msgstr "Никто"
+
+#: ../data/ui/file-prop.ui.h:12
 msgid "File Properties"
 msgstr "Свойства файла"
 
-#: ../data/ui/file-prop.ui.h:2
+#: ../data/ui/file-prop.ui.h:13
 msgid "Icon of the file in folder view"
 msgstr ""
 
-#: ../data/ui/file-prop.ui.h:3
-#, fuzzy
+#: ../data/ui/file-prop.ui.h:14
 msgid "<b>File:</b>"
-msgstr "<b>Тип файла:</b>"
+msgstr "<b>Файл:</b>"
 
-#: ../data/ui/file-prop.ui.h:4
-#, fuzzy
+#: ../data/ui/file-prop.ui.h:15
 msgid "<b>_Name:</b>"
-msgstr "<b>_Владелец:</b>"
+msgstr "<b>_Имя:</b>"
 
-#: ../data/ui/file-prop.ui.h:5
+#: ../data/ui/file-prop.ui.h:16
 msgid "<b>Location:</b>"
 msgstr "<b>Расположение:</b>"
 
-#: ../data/ui/file-prop.ui.h:6
-#, fuzzy
+#: ../data/ui/file-prop.ui.h:17
 msgid "<b>Target file:</b>"
-msgstr "<b>Цель:</b>"
+msgstr "<b>Целевой путь:</b>"
 
-#: ../data/ui/file-prop.ui.h:7
-#, fuzzy
+#: ../data/ui/file-prop.ui.h:18
 msgid "<b>Type:</b>"
 msgstr "<b>Тип файла:</b>"
 
-#: ../data/ui/file-prop.ui.h:8
+#: ../data/ui/file-prop.ui.h:19
 msgid "<b>Open _with:</b>"
 msgstr "<b>Открыть _с помощью:</b>"
 
-#: ../data/ui/file-prop.ui.h:9
+#: ../data/ui/file-prop.ui.h:20
 msgid "Select the application used to open files of this type "
 msgstr "Выберите приложение для запуска файла "
 
-#: ../data/ui/file-prop.ui.h:10
+#: ../data/ui/file-prop.ui.h:21
 msgid "<b>Total Size of Files:</b>"
 msgstr "<b>Общий размер файлов:</b>"
 
-#: ../data/ui/file-prop.ui.h:11
+#: ../data/ui/file-prop.ui.h:22
 msgid "<b>Size on Disk:</b>"
 msgstr "<b>Размер на диске:</b>"
 
-#: ../data/ui/file-prop.ui.h:12
-msgid "<b>Last Modification:</b>"
-msgstr "<b>Последнее изменение:</b>"
+#: ../data/ui/file-prop.ui.h:23
+msgid "<b>Modified:</b>"
+msgstr "<b>Изменён:</b>"
 
-#: ../data/ui/file-prop.ui.h:13
-msgid "<b>Last Access:</b>"
-msgstr "<b>Время последнего доступа:</b>"
+#: ../data/ui/file-prop.ui.h:24
+msgid "<b>Accessed:</b>"
+msgstr "<b>Открыт:</b>"
 
-#: ../data/ui/file-prop.ui.h:14
+#: ../data/ui/file-prop.ui.h:25
 #, fuzzy
 msgid " "
 msgstr ": "
 
-#: ../data/ui/file-prop.ui.h:15
+#: ../data/ui/file-prop.ui.h:26
+msgid "<b>Created/Metadata Updated:</b>"
+msgstr "<b>Создан/Метаданные обновлены:</b>"
+
+#: ../data/ui/file-prop.ui.h:27
 msgid "_General"
 msgstr "_Общее"
 
-#: ../data/ui/file-prop.ui.h:16
+#: ../data/ui/file-prop.ui.h:28
 msgid "<b>O_wner:</b>"
 msgstr "<b>Владелец:</b>"
 
-#: ../data/ui/file-prop.ui.h:17
+#: ../data/ui/file-prop.ui.h:29
 msgid "<b>G_roup:</b>"
 msgstr "<b>Группа:</b>"
 
-#: ../data/ui/file-prop.ui.h:18
+#: ../data/ui/file-prop.ui.h:30
 msgid "<b>_View content:</b>"
 msgstr "<b>Просмотр:</b>"
 
-#: ../data/ui/file-prop.ui.h:19
+#: ../data/ui/file-prop.ui.h:31
 msgid "<b>C_hange content:</b>"
 msgstr "<b>Изменение:</b>"
 
-#: ../data/ui/file-prop.ui.h:20
+#: ../data/ui/file-prop.ui.h:32
 msgid "<b>_Execute:</b>"
 msgstr "<b>Запуск:</b>"
 
-#: ../data/ui/file-prop.ui.h:21
+#: ../data/ui/file-prop.ui.h:33
 msgid "<b>Special bits:</b>"
 msgstr "<b>Особые флаги:</b>"
 
-#: ../data/ui/file-prop.ui.h:22
+#: ../data/ui/file-prop.ui.h:34
 msgid "Who can read content of the file/directory"
 msgstr "Кто может читать содержимое файла или каталога"
 
-#: ../data/ui/file-prop.ui.h:23
+#: ../data/ui/file-prop.ui.h:35
 msgid "Who can change content of the file/directory"
 msgstr "Кто может изменять содержимое файла или каталога"
 
-#: ../data/ui/file-prop.ui.h:24
+#: ../data/ui/file-prop.ui.h:36
 msgid "Who can execute the file or enter the directory"
 msgstr "Кто может запускать файл или входить в каталог"
 
-#: ../data/ui/file-prop.ui.h:25
+#: ../data/ui/file-prop.ui.h:37
 msgid "Special flags for file execution"
 msgstr "Особые флаги запуска файла на выполнение"
 
-#: ../data/ui/file-prop.ui.h:26
+#: ../data/ui/file-prop.ui.h:38
 msgid "Special flags for directory access"
 msgstr "Особые флаги доступа к каталогу"
 
-#: ../data/ui/file-prop.ui.h:27
+#: ../data/ui/file-prop.ui.h:39
 msgid "<b>Access Control</b>"
 msgstr "<b>Управление доступом</b>"
 
-#: ../data/ui/file-prop.ui.h:28
+#: ../data/ui/file-prop.ui.h:40
 msgid "_Permissions"
 msgstr "Права _доступа"
-
-#: ../data/ui/file-prop.ui.h:29
-msgid "---"
-msgstr "---"
-
-#: ../data/ui/file-prop.ui.h:30
-msgid "None"
-msgstr "Нет"
-
-#: ../data/ui/file-prop.ui.h:31
-msgid "Sticky"
-msgstr "\"Липкий\""
-
-#: ../data/ui/file-prop.ui.h:32
-msgid "Set GID"
-msgstr "Установить GID"
-
-#: ../data/ui/file-prop.ui.h:33
-msgid "Sticky & set GID"
-msgstr "\"Липкий\" и установить GID"
-
-#: ../data/ui/file-prop.ui.h:34
-msgid "Set UID"
-msgstr "Установить UID"
-
-#: ../data/ui/file-prop.ui.h:35
-msgid "Set UID & GID"
-msgstr "Установить UID и GID"
-
-#: ../data/ui/file-prop.ui.h:36
-msgid "Only owner"
-msgstr "Только владелец"
-
-#: ../data/ui/file-prop.ui.h:37
-msgid "Only owner and group"
-msgstr "Только владелец и группа"
-
-#: ../data/ui/file-prop.ui.h:38
-msgid "Anyone"
-msgstr "Все"
-
-#: ../data/ui/file-prop.ui.h:39
-msgid "Nobody"
-msgstr "Никто"
 
 #: ../data/ui/filesearch.ui.h:1
 msgid "Bytes"
@@ -587,7 +587,7 @@ msgstr "Загрузка..."
 
 #: ../src/gtk/fm-dir-tree-view.c:376
 msgid "Shows tree of directories in sidebar"
-msgstr ""
+msgstr "Показывает дерево директорий в боковой панели"
 
 #: ../src/gtk/fm-dnd-dest.c:716
 msgid "XDirectSave failed."
@@ -637,59 +637,50 @@ msgstr "_Восстановить"
 msgid "Restore trashed files to original paths"
 msgstr "Восстановление файлов из корзины"
 
-#: ../src/gtk/fm-file-properties.c:205
+#: ../src/gtk/fm-file-properties.c:209
 msgid "byte"
 msgid_plural "bytes"
 msgstr[0] "байт"
 msgstr[1] "байта"
 msgstr[2] "байтов"
 
-#: ../src/gtk/fm-file-properties.c:306
+#: ../src/gtk/fm-file-properties.c:310
 msgid "Please enter a valid user name or numeric id."
 msgstr "Введите правильное имя пользователя или цифровой идентификатор."
 
-#: ../src/gtk/fm-file-properties.c:336
+#: ../src/gtk/fm-file-properties.c:340
 msgid "Please enter a valid group name or numeric id."
 msgstr "Введите правильное имя группы или цифровой идентификатор."
 
 #. FIXME: may special bits and exec flags still be messed up?
-#: ../src/gtk/fm-file-properties.c:530
+#: ../src/gtk/fm-file-properties.c:534
 msgid ""
 "Do you want to recursively apply these changes to all files and sub-folders?"
 msgstr "Применить ко всем вложенным файлам и каталогам?"
 
-#: ../src/gtk/fm-file-properties.c:721
+#: ../src/gtk/fm-file-properties.c:725
 msgid "<b>_Access content:</b>"
 msgstr "<b>Доступ к содержимому:</b>"
 
-#: ../src/gtk/fm-file-properties.c:805
-msgid "N/A"
-msgstr ""
-
-#: ../src/gtk/fm-file-properties.c:816
-#, c-format
-msgid "%s ... %s"
-msgstr ""
-
-#: ../src/gtk/fm-file-properties.c:859
+#: ../src/gtk/fm-file-properties.c:835
 #, c-format
 msgid "%s (%s)"
 msgstr ""
 
-#: ../src/gtk/fm-file-properties.c:913
+#: ../src/gtk/fm-file-properties.c:889
 msgid "Files of different types"
 msgstr "Файлы разных типов"
 
-#: ../src/gtk/fm-file-properties.c:949
+#: ../src/gtk/fm-file-properties.c:925
 #, c-format
 msgid "%s - Properties"
 msgstr "%s - Свойства"
 
-#: ../src/gtk/fm-file-properties.c:955
+#: ../src/gtk/fm-file-properties.c:931
 msgid "Multiple Files"
 msgstr "Несколько файлов"
 
-#: ../src/gtk/fm-file-properties.c:962
+#: ../src/gtk/fm-file-properties.c:938
 #, c-format
 msgid "Properties - %u items"
 msgid_plural "Properties - %u items"
@@ -771,35 +762,33 @@ msgstr "Введите имя создаваемой папки:"
 
 #: ../src/gtk/fm-folder-menu.c:210
 msgid "Creating new folder"
-msgstr ""
+msgstr "Создание новой папки"
 
 #: ../src/gtk/fm-folder-menu.c:223
-#, fuzzy
 msgid "Enter a name for empty file:"
-msgstr "Введите имя создаваемого файла:"
+msgstr "Введите имя нового пустого файла:"
 
 #: ../src/gtk/fm-folder-menu.c:224
-#, fuzzy
-msgid "Creating ..."
-msgstr "Создать новый..."
+msgid "Creating empty file"
+msgstr "Создание пустого файла"
 
 #: ../src/gtk/fm-folder-menu.c:230
 msgid "New"
 msgstr "Новый"
 
 #: ../src/gtk/fm-folder-menu.c:240
-#, fuzzy, c-format
+#, c-format
 msgid "Enter a name for the new %s:"
-msgstr "Введите имя создаваемого файла:"
+msgstr "Введите имя создаваемого файла %s:"
 
 #: ../src/gtk/fm-folder-menu.c:243
-#, fuzzy, c-format
+#, c-format
 msgid "Creating %s"
-msgstr "Создание символьных ссылок"
+msgstr "Создание файла %s"
 
 #: ../src/gtk/fm-folder-menu.c:247
 msgid "_Run default application on file after creation"
-msgstr ""
+msgstr "_Открыть файл в ассоциированном приложении"
 
 #: ../src/gtk/fm-gtk-file-launcher.c:129
 #, c-format
@@ -818,7 +807,7 @@ msgstr "Файл «%s» является исполняемым. Хотите е
 #. show error if no paths are added
 #: ../src/gtk/fm-gtk-file-launcher.c:586
 msgid "No folders are specified."
-msgstr "Нет заданных каталогов"
+msgstr "Не заданы каталоги."
 
 #: ../src/gtk/fm-gtk-file-launcher.c:625
 msgid "Select a folder"
@@ -907,66 +896,66 @@ msgstr "Вставить и пере_йти"
 
 #: ../src/gtk/fm-path-entry.c:663
 msgid "Entry for folder path"
-msgstr ""
+msgstr "Поле ввода для пути к папке"
 
-#: ../src/gtk/fm-places-model.c:784 ../src/gtk/fm-places-model.c:928
+#: ../src/gtk/fm-places-model.c:831 ../src/gtk/fm-places-model.c:975
 msgid "File System"
 msgstr "Файловая система"
 
-#: ../src/gtk/fm-places-model.c:806 ../src/gtk/fm-places-model.c:914
+#: ../src/gtk/fm-places-model.c:853 ../src/gtk/fm-places-model.c:961
 msgid "Desktop"
 msgstr "Рабочий стол"
 
-#: ../src/gtk/fm-places-model.c:824 ../src/gtk/fm-places-model.c:934
+#: ../src/gtk/fm-places-model.c:871 ../src/gtk/fm-places-model.c:981
 msgid "Applications"
 msgstr "Приложения"
 
-#: ../src/gtk/fm-places-model.c:852
+#: ../src/gtk/fm-places-model.c:899
 msgid "Trash Can"
 msgstr "Корзина"
 
-#: ../src/gtk/fm-places-view.c:106
+#: ../src/gtk/fm-places-view.c:119
 msgid "_Mount Volume"
 msgstr "Монтировать том"
 
-#: ../src/gtk/fm-places-view.c:107
+#: ../src/gtk/fm-places-view.c:120
 msgid "_Unmount Volume"
 msgstr "Размонтировать том"
 
-#: ../src/gtk/fm-places-view.c:108
+#: ../src/gtk/fm-places-view.c:121
 msgid "_Eject Removable Media"
 msgstr "Извлечь внешнее устройство"
 
-#: ../src/gtk/fm-places-view.c:123
+#: ../src/gtk/fm-places-view.c:146
 msgid "_Rename Bookmark Item"
 msgstr "Переименовать закладку"
 
-#: ../src/gtk/fm-places-view.c:124
+#: ../src/gtk/fm-places-view.c:147
 msgid "Re_move from Bookmark"
 msgstr "Удалить из закладок"
 
-#: ../src/gtk/fm-places-view.c:125
+#: ../src/gtk/fm-places-view.c:148
 msgid "Move Bookmark _Up"
 msgstr "Переместить закладку _выше"
 
-#: ../src/gtk/fm-places-view.c:126
+#: ../src/gtk/fm-places-view.c:149
 msgid "Move Bookmark _Down"
 msgstr "Переместить закладку _ниже"
 
-#: ../src/gtk/fm-places-view.c:138
+#: ../src/gtk/fm-places-view.c:161
 msgid "_Empty Trash Can"
 msgstr "Очистить корзину"
 
-#: ../src/gtk/fm-places-view.c:516
+#: ../src/gtk/fm-places-view.c:539
 msgid "Shows list of common places, devices, and bookmarks in sidebar"
 msgstr ""
 
 #. FIXME: we need to set a proper parent window for the dialog
-#: ../src/gtk/fm-places-view.c:995
+#: ../src/gtk/fm-places-view.c:1033
 msgid "Rename Bookmark Item"
 msgstr "Переименовать закладку"
 
-#: ../src/gtk/fm-places-view.c:996
+#: ../src/gtk/fm-places-view.c:1034
 msgid "Enter a new name:"
 msgstr "Введите новое имя:"
 
@@ -1072,35 +1061,55 @@ msgstr "Точки входа"
 msgid "Directory Tree"
 msgstr "Дерево директорий"
 
-#: ../src/gtk/fm-standard-view.c:322
+#: ../src/gtk/fm-standard-view.c:326
 msgid "View of folder contents"
 msgstr ""
 
-#: ../src/gtk/fm-standard-view.c:879
+#: ../src/gtk/fm-standard-view.c:882
 #, c-format
-msgid "_Hide %s"
-msgstr ""
+msgid "_Hide column"
+msgstr "Ск_рыть столбец"
 
-#: ../src/gtk/fm-standard-view.c:887
+#: ../src/gtk/fm-standard-view.c:890
 msgid "_Move left"
-msgstr ""
+msgstr "Сдвинуть в_лево"
 
-#: ../src/gtk/fm-standard-view.c:893
+#: ../src/gtk/fm-standard-view.c:896
 msgid "Move _right"
-msgstr ""
+msgstr "Сдвинуть в_право"
 
-#: ../src/gtk/fm-standard-view.c:916
+#: ../src/gtk/fm-standard-view.c:919
 #, c-format
-msgid "Show %s"
-msgstr ""
+msgid "Show column: %s"
+msgstr "Показать столбец: %s"
 
-#: ../src/gtk/fm-standard-view.c:928
-msgid "_Forget width"
-msgstr ""
+#: ../src/gtk/fm-standard-view.c:931
+msgid "_Reset width"
+msgstr "Сбросить _ширину"
 
 #: ../src/gtk/fm-tab-label.c:159
 msgid "Changes active tab"
 msgstr ""
+
+#: ../src/gtk/internals/time-interval-renderer.h:39
+msgid "N/A"
+msgstr "Н/Д"
+
+#: ../src/gtk/internals/time-interval-renderer.h:50
+#, c-format
+msgid "%s ... %s"
+msgstr "%s ... %s"
+
+#, fuzzy
+#~ msgid "Creating ..."
+#~ msgstr "Создать новый..."
+
+#, fuzzy
+#~ msgid "name"
+#~ msgstr "Переименовать"
+
+#~ msgid "<b>Last Modification:</b>"
+#~ msgstr "<b>Последнее изменение:</b>"
 
 #~ msgid "%u byte"
 #~ msgid_plural "%u bytes"
@@ -1323,9 +1332,6 @@ msgstr ""
 
 #~ msgid "<b>_Group:</b>"
 #~ msgstr "<b>_Группа:</b>"
-
-#~ msgid "Rename"
-#~ msgstr "Переименовать"
 
 #~ msgid "Trash"
 #~ msgstr "Корзина"
