@@ -120,15 +120,15 @@ static GtkActionEntry vol_menu_actions[]=
     {"Unmount", NULL, N_("_Unmount Volume"), NULL, NULL, G_CALLBACK(on_umount)},
     {"Eject", NULL, N_("_Eject Removable Media"), NULL, NULL, G_CALLBACK(on_eject)},
 
-    {"Debug", NULL, N_("Debug"), NULL, NULL, NULL},
-    {"ShowVolumeProperty", NULL, N_("Show Volume Property"), NULL, NULL, NULL},
-    {"VolumeNameShow_name", NULL, N_("name"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_identifier_label", NULL, N_("id:label"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_identifier_unix_device", NULL, N_("id:unix-device"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_identifier_uuid", NULL, N_("id:uuid"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_identifier_class", NULL, N_("id:class"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_identifier_nfs_mount", NULL, N_("id:nfs-mount"), NULL, NULL, G_CALLBACK(on_show_volume_property)},
-    {"VolumeNameShow_sort_key", NULL, N_("sort_key"), NULL, NULL, G_CALLBACK(on_show_volume_property)}
+    {"Debug", NULL, "Debug", NULL, NULL, NULL},
+    {"ShowVolumeProperty", NULL, "Show Volume Property", NULL, NULL, NULL},
+    {"VolumeNameShow_name", NULL, "name", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_label", NULL, "id:label", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_unix_device", NULL, "id:unix-device", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_uuid", NULL, "id:uuid", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_class", NULL, "id:class", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_identifier_nfs_mount", NULL, "id:nfs-mount", NULL, NULL, G_CALLBACK(on_show_volume_property)},
+    {"VolumeNameShow_sort_key", NULL, "sort_key", NULL, NULL, G_CALLBACK(on_show_volume_property)}
 };
 
 static const char bookmark_menu_xml[]=
