@@ -194,7 +194,7 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
     GList *templates = g_object_get_qdata(G_OBJECT(ui), templates_quark);
     FmTemplate *templ;
     FmMimeType *mime_type;
-    const char *prompt, *name_template, *label;
+    const char *prompt, *template_name, *label;
     char *_prompt = NULL, *header, *basename;
     FmPath *dest;
     GFile *gf;
@@ -227,7 +227,7 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
         return;
     if(templ == NULL) /* new folder */
     {
-        name_template = _("New");
+        template_name = _("New");
         n = -1;
         run_app = FALSE;
         run_button = NULL;
@@ -242,7 +242,7 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
         label = fm_template_get_label(templ);
         header = g_strdup_printf(_("Creating %s"), label ? label :
                                              fm_mime_type_get_desc(mime_type));
-        name_template = fm_template_get_name(templ, &n);
+        template_name = fm_template_get_name(templ, &n);
         run_app = fm_config->template_run_app;
         sub_button = gtk_check_button_new_with_mnemonic(_("_Run default application on file after creation"));
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(sub_button), run_app);
@@ -252,7 +252,7 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
         gtk_container_add(GTK_CONTAINER(run_button), sub_button);
     }
     basename = fm_get_user_input_n(GTK_WINDOW(win), header, prompt,
-                                   name_template, n, run_button);
+                                   template_name, n, run_button);
     if(templ)
     {
         g_free(_prompt);
