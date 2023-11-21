@@ -879,7 +879,7 @@ static gboolean on_column_button_released_event(GtkWidget *button, GdkEventButto
 
         info = g_object_get_qdata(G_OBJECT(col), fm_qdata_id);
         label = fm_folder_model_col_get_title(FM_STANDARD_VIEW(fv)->model, info->col_id);
-        menu_item_label = g_strdup_printf(_("_Hide %s"), label);
+        menu_item_label = g_strdup_printf(_("_Hide column"), label);
         menu_item = gtk_menu_item_new_with_mnemonic(menu_item_label);
         g_free(menu_item_label);
         gtk_menu_shell_append(menu, menu_item);
@@ -916,7 +916,7 @@ static gboolean on_column_button_released_event(GtkWidget *button, GdkEventButto
                 continue;
             if(menu_item_label == NULL)
                 gtk_menu_shell_append(menu, gtk_separator_menu_item_new());
-            menu_item_label = g_strdup_printf(_("Show %s"), label);
+            menu_item_label = g_strdup_printf(_("Show column: %s"), label);
             menu_item = gtk_menu_item_new_with_label(menu_item_label);
             g_object_set_data(G_OBJECT(menu_item), "col_id", GINT_TO_POINTER(i));
             g_signal_connect(menu_item, "activate", G_CALLBACK(on_column_add), col);
@@ -928,7 +928,7 @@ static gboolean on_column_button_released_event(GtkWidget *button, GdkEventButto
         if(info->width > 0 && info->col_id != FM_FOLDER_MODEL_COL_NAME)
         {
             gtk_menu_shell_append(menu, gtk_separator_menu_item_new());
-            menu_item = gtk_menu_item_new_with_mnemonic(_("_Forget width"));
+            menu_item = gtk_menu_item_new_with_mnemonic(_("_Reset width"));
             gtk_menu_shell_append(menu, menu_item);
             g_signal_connect(menu_item, "activate", G_CALLBACK(on_column_auto_adjust), col);
         }

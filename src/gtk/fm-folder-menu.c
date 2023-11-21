@@ -221,7 +221,7 @@ static void on_create_new(GtkAction* act, FmFolderView* fv)
     {
         templ = NULL;
         prompt = _("Enter a name for empty file:");
-        header = _("Creating ...");
+        header = _("Creating empty file");
     }
     else /* invalid action name, is it possible? */
         return;
