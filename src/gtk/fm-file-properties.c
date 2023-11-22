@@ -163,6 +163,10 @@ struct _FmFilePropData
     GtkLabel* atime;
     GtkLabel* ctime;
 
+    GtkLabel* mtime_label;
+    GtkLabel* atime_label;
+    GtkLabel* ctime_label;
+
     /* Permissions page */
     GtkWidget* permissions_tab;
     GtkEntry* owner;
@@ -1081,6 +1085,9 @@ GtkDialog* fm_file_properties_widget_new(FmFileInfoList* files, gboolean topleve
     GET_WIDGET(GTK_LABEL,mtime);
     GET_WIDGET(GTK_LABEL,atime);
     GET_WIDGET(GTK_LABEL,ctime);
+    GET_WIDGET(GTK_LABEL,mtime_label);
+    GET_WIDGET(GTK_LABEL,atime_label);
+    GET_WIDGET(GTK_LABEL,ctime_label);
 
     GET_WIDGET(GTK_WIDGET,permissions_tab);
     GET_WIDGET(GTK_ENTRY,owner);
@@ -1093,6 +1100,13 @@ GtkDialog* fm_file_properties_widget_new(FmFileInfoList* files, gboolean topleve
     GET_WIDGET(GTK_LABEL,flags_label);
     GET_WIDGET(GTK_COMBO_BOX,flags_set_file);
     GET_WIDGET(GTK_COMBO_BOX,flags_set_dir);
+
+    const char * mtime_tooltip = _("The last time the file’s contents were modified.");
+    const char * atime_tooltip = _("The last time a file was accessed. This value may be inaccurate depending on the file system mount options. Refer to <b>mount(8)</b> manual page for more information about <b>noatime</b>, <b>relatime</b> and <b>strictatime</b> options.");
+    const char * ctime_tooltip = _("The last time metadata related to a file was changed. This includes permissions change, file owner change, creation and deletion of hard links.\n<b>Note:</b>\nOn some systems (like Unix) this field is the time of the last metadata change, and, on others (like Windows), it's the file creation time.");
+    gtk_widget_set_tooltip_markup(GTK_WIDGET(data->mtime_label), mtime_tooltip);
+    gtk_widget_set_tooltip_markup(GTK_WIDGET(data->atime_label), atime_tooltip);
+    gtk_widget_set_tooltip_markup(GTK_WIDGET(data->ctime_label), ctime_tooltip);
 
     init_application_list(data);
 

@@ -464,7 +464,6 @@
                       <object class="GtkLabel" id="mtime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="tooltip_markup">The last time the file’s contents were modified.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Modified:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
@@ -498,7 +497,6 @@
                       <object class="GtkLabel" id="atime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="tooltip_markup">The last time a file was accessed. This value may be inaccurate depending on the file system mount options. Refer to &lt;b&gt;mount(8)&lt;/b&gt; manual page for more information about &lt;b&gt;noatime&lt;/b&gt;, &lt;b&gt;relatime&lt;/b&gt; and &lt;b&gt;strictatime&lt;/b&gt; options.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Accessed:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>
@@ -588,9 +586,6 @@
                       <object class="GtkLabel" id="ctime_label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="tooltip_markup">The last time metadata related to a file was changed. This includes permissions change, file owner change, creation and deletion of hard links.
-&lt;b&gt;Note:&lt;/b&gt;
-On some systems (like Unix) this field is the time of the last metadata change, and, on others (like Windows), it's the file creation time.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">&lt;b&gt;Created/Metadata Updated:&lt;/b&gt;</property>
                         <property name="use_markup">True</property>

@@ -6,13 +6,13 @@ msgid ""
 msgstr ""
 "Project-Id-Version: lxfm\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-11-21 22:41+0700\n"
-"PO-Revision-Date: 2023-11-21 22:58+0700\n"
+"POT-Creation-Date: 2023-11-22 12:42+0700\n"
+"PO-Revision-Date: 2023-11-22 12:52+0700\n"
 "Last-Translator: Vadim Ushakov <wandrien.dev@gmail.com>\n"
 "Language-Team: gnome-cyr\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -637,56 +637,87 @@ msgstr "_Восстановить"
 msgid "Restore trashed files to original paths"
 msgstr "Восстановление файлов из корзины"
 
-#: ../src/gtk/fm-file-properties.c:209
+#: ../src/gtk/fm-file-properties.c:213
 msgid "byte"
 msgid_plural "bytes"
 msgstr[0] "байт"
 msgstr[1] "байта"
 msgstr[2] "байтов"
 
-#: ../src/gtk/fm-file-properties.c:310
+#: ../src/gtk/fm-file-properties.c:314
 msgid "Please enter a valid user name or numeric id."
 msgstr "Введите правильное имя пользователя или цифровой идентификатор."
 
-#: ../src/gtk/fm-file-properties.c:340
+#: ../src/gtk/fm-file-properties.c:344
 msgid "Please enter a valid group name or numeric id."
 msgstr "Введите правильное имя группы или цифровой идентификатор."
 
 #. FIXME: may special bits and exec flags still be messed up?
-#: ../src/gtk/fm-file-properties.c:534
+#: ../src/gtk/fm-file-properties.c:538
 msgid ""
 "Do you want to recursively apply these changes to all files and sub-folders?"
 msgstr "Применить ко всем вложенным файлам и каталогам?"
 
-#: ../src/gtk/fm-file-properties.c:725
+#: ../src/gtk/fm-file-properties.c:729
 msgid "<b>_Access content:</b>"
 msgstr "<b>Доступ к содержимому:</b>"
 
-#: ../src/gtk/fm-file-properties.c:835
+#: ../src/gtk/fm-file-properties.c:839
 #, c-format
 msgid "%s (%s)"
 msgstr ""
 
-#: ../src/gtk/fm-file-properties.c:889
+#: ../src/gtk/fm-file-properties.c:893
 msgid "Files of different types"
 msgstr "Файлы разных типов"
 
-#: ../src/gtk/fm-file-properties.c:925
+#: ../src/gtk/fm-file-properties.c:929
 #, c-format
 msgid "%s - Properties"
 msgstr "%s - Свойства"
 
-#: ../src/gtk/fm-file-properties.c:931
+#: ../src/gtk/fm-file-properties.c:935
 msgid "Multiple Files"
 msgstr "Несколько файлов"
 
-#: ../src/gtk/fm-file-properties.c:938
+#: ../src/gtk/fm-file-properties.c:942
 #, c-format
 msgid "Properties - %u items"
 msgid_plural "Properties - %u items"
 msgstr[0] "Свойства: %u элемент"
 msgstr[1] "Свойства: %u элемента"
 msgstr[2] "Свойства: %u элементов"
+
+#: ../src/gtk/fm-file-properties.c:1104
+msgid "The last time the file’s contents were modified."
+msgstr "Время, когда содержимое файла был изменено."
+
+#: ../src/gtk/fm-file-properties.c:1105
+msgid ""
+"The last time a file was accessed. This value may be inaccurate depending on "
+"the file system mount options. Refer to <b>mount(8)</b> manual page for more "
+"information about <b>noatime</b>, <b>relatime</b> and <b>strictatime</b> "
+"options."
+msgstr ""
+"Время, когда файл был открыт. Это значение может быть неточным, в "
+"зависимости от параметров монтирования файловой системы. За более детальной "
+"информацией о параметрах монтирования <b>noatime</b>, <b>relatime</b> и "
+"<b>strictatime</b> обратитесь к странице руководства <b>mount(8)</b>."
+
+#: ../src/gtk/fm-file-properties.c:1106
+msgid ""
+"The last time metadata related to a file was changed. This includes "
+"permissions change, file owner change, creation and deletion of hard links.\n"
+"<b>Note:</b>\n"
+"On some systems (like Unix) this field is the time of the last metadata "
+"change, and, on others (like Windows), it's the file creation time."
+msgstr ""
+"Время, когда метаданные файлы были изменены. К метаданным относится "
+"следующая информация: права доступа в файлу, владелец файла, количество "
+"жестких ссылок на файл.\n"
+"<b>Примечание:</b>\n"
+"На некоторых системах (Unix) это поле хранит время изменения метаданных. На "
+"других (Windows) оно хранит время создания файла."
 
 #: ../src/gtk/fm-folder-menu.c:118
 msgid "Create _New..."
