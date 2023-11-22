@@ -141,49 +141,38 @@ static void free_data(gpointer user_data)
     g_slice_free(FmAppChooserComboBoxData, data);
 }
 
-/**
- * fm_app_chooser_combo_box_setup
- * @combo: a #GtkComboBox
- * @mime_type: (allow-none): a #FmMimeType to select application
- * @apps: (allow-none) (element-type GAppInfo): custom list of applications
- * @sel: (allow-none): a selected application in @apps
- *
- * Setups a combobox for selecting default application either for
- * specified mime-type or from a list of pre-defined applications.
- * If @mime_type is %NULL, and @sel is provided and found in the @apps,
- * then it will be selected. If @mime_type is not %NULL then default
- * application for the @mime_type will be selected.
- * When set up, the combobox will contain a list of available applications.
- *
- * Since: 0.1.5
- */
-void fm_app_chooser_combo_box_setup(GtkComboBox* combo, FmMimeType* mime_type, GList* apps, GAppInfo* sel)
+static void _fm_app_chooser_combo_box_setup(GtkComboBox* combo, FmMimeType* mime_type, GList* apps, GAppInfo* sel)
 {
     FmAppChooserComboBoxData* data = g_slice_new0(FmAppChooserComboBoxData);
     GtkListStore* store = gtk_list_store_new(3, G_TYPE_ICON, G_TYPE_STRING, G_TYPE_APP_INFO);
     GtkTreeIter it;
-    GList* l;
-    GtkCellRenderer* render;
+
+    /**************************************************************************/
+
+    /* Setup layout */
 
     gtk_cell_layout_clear(GTK_CELL_LAYOUT(combo));
 
-    render = gtk_cell_renderer_pixbuf_new();
-    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(combo), render, FALSE);
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(combo), render, "gicon", 0);
+    {
+        GtkCellRenderer* render = gtk_cell_renderer_pixbuf_new();
+        gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(combo), render, FALSE);
+        gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(combo), render, "gicon", 0);
+    }
 
-    render = gtk_cell_renderer_text_new();
-    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(combo), render, FALSE);
-    gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(combo), render, "text", 1);
+    {
+        GtkCellRenderer* render = gtk_cell_renderer_text_new();
+        gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(combo), render, FALSE);
+        gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(combo), render, "text", 1);
+    }
+
+    /**************************************************************************/
 
     if(mime_type)
     {
         data->mime_type = fm_mime_type_ref(mime_type);
-        apps = g_app_info_get_all_for_type(fm_mime_type_get_type(data->mime_type));
-        if(apps)
-            sel = G_APP_INFO(apps->data); /* default app is the first one in the list. */
     }
 
-    for(l = apps; l; l = l->next)
+    for(GList* l = apps; l; l = l->next)
     {
         GAppInfo* app = G_APP_INFO(l->data);
         gtk_list_store_insert_with_values(store, &it, -1,
@@ -195,15 +184,6 @@ void fm_app_chooser_combo_box_setup(GtkComboBox* combo, FmMimeType* mime_type, G
             /* this is the initially selected app */
             data->initial_sel_iter = it;
             data->initial_sel_app = (GAppInfo*)g_object_ref(app);
-        }
-    }
-
-    if(mime_type) /* if this list is retrived with g_app_info_get_all_for_type() */
-    {
-        if(apps)
-        {
-            g_list_foreach(apps, (GFunc)g_object_unref, NULL);
-            g_list_free(apps);
         }
     }
 
@@ -228,6 +208,44 @@ void fm_app_chooser_combo_box_setup(GtkComboBox* combo, FmMimeType* mime_type, G
 
     g_signal_connect(combo, "changed", G_CALLBACK(on_app_selected), data);
     g_object_set_qdata_full(G_OBJECT(combo), fm_qdata_id, data, free_data);
+}
+
+/**
+ * fm_app_chooser_combo_box_setup
+ * @combo: a #GtkComboBox
+ * @mime_type: (allow-none): a #FmMimeType to select application
+ * @apps: (allow-none) (element-type GAppInfo): custom list of applications
+ * @sel: (allow-none): a selected application in @apps
+ *
+ * Setups a combobox for selecting default application either for
+ * specified mime-type or from a list of pre-defined applications.
+ * If @mime_type is %NULL, and @sel is provided and found in the @apps,
+ * then it will be selected. If @mime_type is not %NULL then default
+ * application for the @mime_type will be selected.
+ * When set up, the combobox will contain a list of available applications.
+ *
+ * Since: 0.1.5
+ */
+void fm_app_chooser_combo_box_setup(GtkComboBox* combo, FmMimeType* mime_type, GList* apps, GAppInfo* sel)
+{
+    if(mime_type)
+    {
+        const char * content_type = fm_mime_type_get_type(mime_type);
+        apps = g_app_info_get_all_for_type(content_type);
+        sel = g_app_info_get_default_for_type(content_type, FALSE);
+        if(!sel && apps)
+            sel = G_APP_INFO(g_object_ref(G_OBJECT(apps->data))); /* the last used app is the first one in the list. */
+    }
+
+    _fm_app_chooser_combo_box_setup(combo, mime_type, apps, sel);
+
+    if(mime_type)
+    {
+        if(apps)
+            g_list_free_full(apps, (GDestroyNotify) g_object_unref);
+        if (sel)
+            g_object_unref(sel);
+    }
 }
 
 /**
