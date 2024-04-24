@@ -936,11 +936,11 @@ static void update_ui(FmFilePropData* data)
         gtk_widget_set_sensitive(GTK_WIDGET(data->name), FALSE);
 
 
-        size_t files_count = fm_file_info_list_get_length(data->files);
+        guint files_count = fm_file_info_list_get_length(data->files);
         gchar * dialog_title = g_strdup_printf(
             g_dngettext(GETTEXT_PACKAGE,
                 "Properties - %u items",
-                "Properties - %u items", files_count),
+                "Properties - %u items", (unsigned int) files_count),
             files_count);
         gtk_window_set_title(GTK_WINDOW(data->dlg), dialog_title);
         g_free(dialog_title);

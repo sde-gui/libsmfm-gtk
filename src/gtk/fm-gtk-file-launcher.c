@@ -533,7 +533,7 @@ static gboolean launch_search(FileSearchUI* ui)
             gint unit_index = gtk_combo_box_get_active(ui->bigger_unit_combo);
             /* convert to bytes */
             min_size *= unit_bytes[unit_index];
-            g_string_append_printf(search_uri, "&min_size=%llu", (guint64)min_size);
+            g_string_append_printf(search_uri, "&min_size=%" G_GUINT64_FORMAT, (guint64)min_size);
         }
 
         if(gtk_widget_get_sensitive(GTK_WIDGET(ui->smaller_spinbutton)))
@@ -542,7 +542,7 @@ static gboolean launch_search(FileSearchUI* ui)
             gint unit_index = gtk_combo_box_get_active(ui->smaller_unit_combo);
             /* convert to bytes */
             max_size *= unit_bytes[unit_index];
-            g_string_append_printf(search_uri, "&max_size=%llu", (guint64)max_size);
+            g_string_append_printf(search_uri, "&max_size=%" G_GUINT64_FORMAT, (guint64)max_size);
         }
 
         if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(ui->min_mtime_checkbutton)))

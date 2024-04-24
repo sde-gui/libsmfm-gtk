@@ -192,7 +192,15 @@ if test "$enable_debug" = "yes"; then
     CPPFLAGS="$CPPFLAGS -DG_ENABLE_DEBUG -O0 -g"
     case "$CC" in
     gcc*)
-        CPPFLAGS="$CPPFLAGS -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers"
+        # Splitted across multiple lines to make changes easier when debugging
+        F=''
+        F="$F -Wall -Wextra"
+        F="$F -Wno-unused-parameter"
+        F="$F -Wno-missing-field-initializers"
+        F="$F -Wno-deprecated-declarations"
+        F="$F -Werror=format"
+        F="$F -fanalyzer"
+        CPPFLAGS="$CPPFLAGS $F"
         ;;
     *)
         ;;

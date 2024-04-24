@@ -136,10 +136,10 @@ int main(int argc, char** argv)
         g_string_append_printf(search_uri, "&types=%s", target_type);
 
     if(min_size > 0)
-        g_string_append_printf(search_uri, "&min_size=%llu", min_size);
+        g_string_append_printf(search_uri, "&min_size=%" G_GINT64_FORMAT, min_size);
 
     if(max_size > 0)
-        g_string_append_printf(search_uri, "&min_size=%llu", max_size);
+        g_string_append_printf(search_uri, "&min_size=%" G_GINT64_FORMAT, max_size);
 
     // g_string_append(search_uri, "search://usr/share?recursive=1&name=*.mo&name_mode=widecard&show_hidden=0&name_case_sensitive=1");
 

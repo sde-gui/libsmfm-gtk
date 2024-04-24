@@ -879,7 +879,7 @@ static gboolean on_column_button_released_event(GtkWidget *button, GdkEventButto
 
         info = g_object_get_qdata(G_OBJECT(col), fm_qdata_id);
         label = fm_folder_model_col_get_title(FM_STANDARD_VIEW(fv)->model, info->col_id);
-        menu_item_label = g_strdup_printf(_("_Hide column"), label);
+        menu_item_label = g_strdup_printf(_("_Hide column"));
         menu_item = gtk_menu_item_new_with_mnemonic(menu_item_label);
         g_free(menu_item_label);
         gtk_menu_shell_append(menu, menu_item);
