@@ -69,7 +69,14 @@ static gboolean layout_cache_key_equal(LayoutCacheKey * a, LayoutCacheKey * b)
 
 static void layout_cache_key_make_hash(LayoutCacheKey * a)
 {
-    a->hash = g_str_hash(a->text) + a->text_size + a->alignment + a->wrap_mode + a->width + a->height + (guint) a->widget;
+    a->hash =
+        g_str_hash(a->text)
+        + a->text_size
+        + a->alignment
+        + a->wrap_mode
+        + a->width
+        + a->height
+        + (guint) (uintptr_t) a->widget;
 }
 
 static guint layout_cache_key_get_hash(LayoutCacheKey * a)
