@@ -989,11 +989,10 @@ void fm_dir_tree_model_load_row(FmDirTreeModel* model, GtkTreeIter* it, GtkTreeP
         /* if the folder is already loaded, call "loaded" handler ourselves */
         if(fm_folder_is_loaded(folder)) /* already loaded */
         {
-            FmDirTreeItem* item = (FmDirTreeItem*)item_l->data;
-            FmDirTreeModel* model = item->model;
-            GList* file_l;
+            FmDirTreeItem* item_ = (FmDirTreeItem*)item_l->data;
+            FmDirTreeModel* model_ = item_->model;
             FmFileInfoList* files = fm_folder_get_files(folder);
-            for(file_l = fm_file_info_list_peek_head_link(files); file_l; file_l = file_l->next)
+            for(GList* file_l = fm_file_info_list_peek_head_link(files); file_l; file_l = file_l->next)
             {
                 FmFileInfo* fi = file_l->data;
                 if(fm_file_info_is_directory(fi))
@@ -1001,7 +1000,7 @@ void fm_dir_tree_model_load_row(FmDirTreeModel* model, GtkTreeIter* it, GtkTreeP
                     /* FIXME: later we can try to support adding
                      *        files to the tree, too so this model
                      *        can be even more useful. */
-                    insert_file_info(model, item_l, tp, fi);
+                    insert_file_info(model_, item_l, tp, fi);
                     /* g_debug("insert: %s", fi->path->name); */
                 }
             }

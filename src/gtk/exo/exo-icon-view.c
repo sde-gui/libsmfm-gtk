@@ -5744,7 +5744,6 @@ void
 exo_icon_view_set_model (ExoIconView  *icon_view,
                          GtkTreeModel *model)
 {
-  ExoIconViewItem *item;
   GtkTreeIter      iter;
   gint             n;
 
@@ -5866,7 +5865,7 @@ exo_icon_view_set_model (ExoIconView  *icon_view,
           n = 0;
           do
             {
-              item = g_slice_new0 (ExoIconViewItem);
+              ExoIconViewItem *item = g_slice_new0 (ExoIconViewItem);
               item->iter = iter;
               item->index = n++;
               _exo_icon_view_item_invalidate_size(item);

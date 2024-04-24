@@ -582,17 +582,16 @@ static void on_response(GtkDialog* dlg, int response, FmFilePropData* data)
 /* FIXME: this is too dirty. Need some refactor later. */
 static void update_permissions(FmFilePropData* data)
 {
-    FmFileInfo* fi = fm_file_info_list_peek_head(data->files);
-    GList *l;
+    FmFileInfo* fi_ = fm_file_info_list_peek_head(data->files);
     int sel;
     char* tmp;
-    mode_t fi_mode = fm_file_info_get_mode(fi);
+    mode_t fi_mode = fm_file_info_get_mode(fi_);
     mode_t read_perm = (fi_mode & (S_IRUSR|S_IRGRP|S_IROTH));
     mode_t write_perm = (fi_mode & (S_IWUSR|S_IWGRP|S_IWOTH));
     mode_t exec_perm = (fi_mode & (S_IXUSR|S_IXGRP|S_IXOTH));
     mode_t flags_set = (fi_mode & (S_ISUID|S_ISGID|S_ISVTX));
-    gint32 uid = fm_file_info_get_uid(fi);
-    gint32 gid = fm_file_info_get_gid(fi);
+    gint32 uid = fm_file_info_get_uid(fi_);
+    gint32 gid = fm_file_info_get_gid(fi_);
     gboolean mix_read = FALSE, mix_write = FALSE, mix_exec = FALSE;
     gboolean mix_flags = FALSE;
     struct group* grp = NULL;
@@ -601,7 +600,7 @@ static void update_permissions(FmFilePropData* data)
     struct group grpb;
     struct passwd pwb;
 
-    data->all_native = fm_path_is_native(fm_file_info_get_path(fi));
+    data->all_native = fm_path_is_native(fm_file_info_get_path(fi_));
     data->has_dir = (S_ISDIR(fi_mode) != FALSE);
     data->all_dirs = data->has_dir;
 
@@ -611,7 +610,7 @@ static void update_permissions(FmFilePropData* data)
         return;
     }
 
-    for(l=fm_file_info_list_peek_head_link(data->files)->next; l; l=l->next)
+    for(GList *l=fm_file_info_list_peek_head_link(data->files)->next; l; l=l->next)
     {
         FmFileInfo* fi = FM_FILE_INFO(l->data);
 

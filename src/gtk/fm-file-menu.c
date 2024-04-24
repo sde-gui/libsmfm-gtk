@@ -330,7 +330,6 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
     FmFileMenu* data = g_slice_new0(FmFileMenu);
     GString* xml;
     GList* mime_types = NULL;
-    GList* l;
     GList* apps = NULL;
     FmPath* path = fm_file_info_get_path(fi);
 
@@ -353,7 +352,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
         data->cwd = fm_path_ref(cwd);
 
     /* create list of mime types */
-    for(l = fm_file_info_list_peek_head_link(files); l; l = l->next)
+    for(GList* l = fm_file_info_list_peek_head_link(files); l; l = l->next)
     {
         FmMimeType* mime_type;
         GList* l2;
@@ -374,7 +373,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
     {
         data->same_type = (mime_types->next == NULL);
         apps = g_app_info_get_all_for_type(fm_mime_type_get_type(mime_types->data));
-        for(l = mime_types->next; l; l = l->next)
+        for(GList* l = mime_types->next; l; l = l->next)
         {
             GList *apps2, *l2, *l3;
             apps2 = g_app_info_get_all_for_type(fm_mime_type_get_type(l->data));
@@ -415,7 +414,7 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
             if(use_sub)
                 g_string_append(xml, "<menu action='OpenWithMenu'>");
 
-            for(l=apps;l;l=l->next)
+            for(GList* l=apps;l;l=l->next)
             {
                 GAppInfo* app = l->data;
 
@@ -502,9 +501,8 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
         if(data->all_trash)
         {
             gboolean can_restore = TRUE;
-            GList* l;
             /* only immediate children of trash:/// can be restored. */
-            for(l = fm_file_info_list_peek_head_link(files);l;l=l->next)
+            for(GList* l = fm_file_info_list_peek_head_link(files);l;l=l->next)
             {
                 FmPath* trash_path = fm_file_info_get_path(FM_FILE_INFO(l->data));
                 if(!fm_path_get_parent(trash_path) ||

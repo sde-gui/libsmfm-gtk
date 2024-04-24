@@ -353,8 +353,7 @@ GAppInfo* fm_app_chooser_dlg_dup_selected_app(GtkDialog* dlg, gboolean* set_defa
                     MenuCache* menu_cache;
                     /* see if the command is already in the list of known apps for this mime-type */
                     GList* apps = g_app_info_get_all_for_type(fm_mime_type_get_type(data->mime_type));
-                    GList* l;
-                    for(l=apps;l;l=l->next)
+                    for(GSList* l=apps;l;l=l->next)
                     {
                         GAppInfo* app2 = G_APP_INFO(l->data);
                         const char* cmd = g_app_info_get_commandline(app2);
@@ -385,8 +384,7 @@ GAppInfo* fm_app_chooser_dlg_dup_selected_app(GtkDialog* dlg, gboolean* set_defa
 #endif
                         {
                             GSList* all_apps = menu_cache_list_all_apps(menu_cache);
-                            GSList* l;
-                            for(l=all_apps;l;l=l->next)
+                            for(GSList* l=all_apps;l;l=l->next)
                             {
                                 MenuCacheApp* ma = MENU_CACHE_APP(l->data);
                                 char* bin2 = get_binary(menu_cache_app_get_exec(ma), NULL);

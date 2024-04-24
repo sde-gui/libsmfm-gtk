@@ -199,6 +199,7 @@ if test "$enable_debug" = "yes"; then
         F="$F -Wno-missing-field-initializers"
         F="$F -Wno-deprecated-declarations"
         F="$F -Werror=format"
+        F="$F -Werror=shadow"
         F="$F -fanalyzer"
         CPPFLAGS="$CPPFLAGS $F"
         ;;

@@ -158,7 +158,6 @@ static void init_apps(void)
 int main(int argc, char** argv)
 {
     GtkBuilder* b;
-    GAppInfo* app;
 
 #ifdef ENABLE_NLS
     bindtextdomain(GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
@@ -180,19 +179,23 @@ int main(int argc, char** argv)
     g_setenv("XDG_MENU_PREFIX", "lxde-", TRUE);
     init_apps();
 
-    app = g_app_info_get_default_for_uri_scheme("http");
-    fm_app_chooser_combo_box_setup_custom(browser, browsers, app);
-    g_list_foreach(browsers, (GFunc)g_object_unref, NULL);
-    g_list_free(browsers);
-    if(app)
-        g_object_unref(app);
+    {
+        GAppInfo* app = g_app_info_get_default_for_uri_scheme("http");
+        fm_app_chooser_combo_box_setup_custom(browser, browsers, app);
+        g_list_foreach(browsers, (GFunc)g_object_unref, NULL);
+        g_list_free(browsers);
+        if(app)
+            g_object_unref(app);
+    }
 
-    app = g_app_info_get_default_for_uri_scheme("mailto");
-    fm_app_chooser_combo_box_setup_custom(mail_client, mail_clients, app);
-    g_list_foreach(mail_clients, (GFunc)g_object_unref, NULL);
-    g_list_free(mail_clients);
-    if(app)
-        g_object_unref(app);
+    {
+        GAppInfo* app = g_app_info_get_default_for_uri_scheme("mailto");
+        fm_app_chooser_combo_box_setup_custom(mail_client, mail_clients, app);
+        g_list_foreach(mail_clients, (GFunc)g_object_unref, NULL);
+        g_list_free(mail_clients);
+        if(app)
+            g_object_unref(app);
+    }
 
     if(gtk_dialog_run(dlg) == GTK_RESPONSE_OK)
     {
