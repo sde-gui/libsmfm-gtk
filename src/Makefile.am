@@ -268,6 +268,6 @@ CLEANFILES = \
 #        -export-symbols-regex gtk
 
 CPPCHECK_SRC = $(libsmfm_gtk2_SOURCES)
-CPPCHECK_FLAGS="-q --force --enable=warning,style,performance,portability --std=posix --library=gtk.cfg --suppress=variableScope"
+CPPCHECK_FLAGS="-q --force --enable=warning,style,performance,portability --std=c99 --library=gtk.cfg --suppress=variableScope  --suppress=constParameterPointer --suppress=constVariablePointer --suppress=constParameterCallback"
 cppcheck cppcheck-inconclusive:
 	$(top_srcdir)/run_cppcheck $@ $(CPPCHECK_FLAGS) -- $(COMPILE) $(CPPCHECK_SRC)
