@@ -660,7 +660,7 @@ static inline void create_icon_view(FmStandardView* fv, GList* sels)
 
     if (fv->renderer_text)
         g_object_unref(fv->renderer_text);
-    fv->renderer_text = g_object_ref_sink(fm_cell_renderer_text_new());
+    fv->renderer_text = (FmCellRendererText *) g_object_ref_sink(fm_cell_renderer_text_new());
     GtkCellRenderer * renderer_text = (GtkCellRenderer*)fv->renderer_text;
 
     g_object_set((GObject*)renderer_pixbuf, "follow-state", TRUE, NULL);
