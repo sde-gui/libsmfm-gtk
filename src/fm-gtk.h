@@ -26,6 +26,7 @@
 #include "fm-app-chooser-combo-box.h"
 #include "fm-app-chooser-dlg.h"
 #include "fm-app-menu-view.h"
+#include "fm-app-utils.h"
 #include "fm-cell-renderer-pixbuf.h"
 #include "fm-cell-renderer-text.h"
 #include "fm-clipboard.h"

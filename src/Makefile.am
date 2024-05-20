@@ -63,6 +63,7 @@ libsmfm_gtk2_SOURCES = \
 	gtk/fm-app-menu-view.c \
 	gtk/fm-app-chooser-dlg.c \
 	gtk/fm-app-chooser-combo-box.c \
+	gtk/fm-app-utils.c \
 	gtk/fm-path-entry.c \
 	gtk/fm-file-menu.c \
 	gtk/fm-file-properties.c \
@@ -100,6 +101,7 @@ libsmfmgtkinclude_HEADERS = \
 	gtk/fm-app-menu-view.h \
 	gtk/fm-app-chooser-dlg.h \
 	gtk/fm-app-chooser-combo-box.h \
+	gtk/fm-app-utils.h \
 	gtk/fm-path-entry.h \
 	gtk/fm-file-menu.h \
 	gtk/fm-file-properties.h \
