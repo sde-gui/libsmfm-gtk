@@ -1959,6 +1959,18 @@ static void exo_icon_view_delayed_expose(ExoIconView * icon_view)
             g_timeout_add_full(G_PRIORITY_DEFAULT, 500, delayed_expose_callback, icon_view, delayed_expose_destroy_callback);
 }
 
+static gboolean exo_icon_view_play_delayed_expose(ExoIconView * icon_view)
+{
+    if (icon_view->priv->delayed_expose_timeout_id)
+    {
+        g_source_remove(icon_view->priv->delayed_expose_timeout_id);
+        icon_view->priv->delayed_expose_timeout_id = 0;
+        gtk_widget_queue_draw(GTK_WIDGET(icon_view));
+        return TRUE;
+    }
+    return FALSE;
+}
+
 static void exo_icon_view_queue_draw(ExoIconView * icon_view)
 {
     if (icon_view->priv->delayed_expose_timeout_id == 0)
@@ -1967,9 +1979,7 @@ static void exo_icon_view_queue_draw(ExoIconView * icon_view)
 
 static void exo_icon_view_force_draw(ExoIconView * icon_view)
 {
-    if (icon_view->priv->delayed_expose_timeout_id)
-        g_source_remove(icon_view->priv->delayed_expose_timeout_id);
-    else
+    if (!exo_icon_view_play_delayed_expose(icon_view))
         gtk_widget_queue_draw(GTK_WIDGET(icon_view));
 }
 
@@ -3918,10 +3928,11 @@ exo_icon_view_layout (ExoIconView *icon_view)
                            MAX (priv->height, allocation.height));
     }
 
-    if (redraw_queued && priv->faked_geometry_items != 0 && !priv->layout_defers_redraw)
+    gboolean done = (priv->faked_geometry_items == 0);
+
+    if (redraw_queued && !done && !priv->layout_defers_redraw)
     {
         priv->layout_defers_redraw = TRUE;
-        redraw_queued = FALSE;
     }
     else if (redraw_queued || priv->layout_defers_redraw)
     {
@@ -3933,7 +3944,7 @@ exo_icon_view_layout (ExoIconView *icon_view)
         priv->fairly_layouted_items_at_this_step,
         priv->items_seen);
 
-    return priv->faked_geometry_items == 0;
+    return done;
 }
 
 
@@ -4352,6 +4363,8 @@ layout_callback (gpointer user_data)
   if(!g_source_is_destroyed(g_main_current_source()))
   {
     _continue = !exo_icon_view_layout(icon_view);
+    if (!_continue)
+      exo_icon_view_play_delayed_expose(icon_view);
   }
   GDK_THREADS_LEAVE();
 
