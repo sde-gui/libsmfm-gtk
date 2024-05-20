@@ -82,6 +82,7 @@
 #include "fm-file-properties.h"
 #include "fm-gtk-utils.h"
 #include "fm-app-chooser-dlg.h"
+#include "fm-app-utils.h"
 #include "fm-gtk-file-launcher.h"
 
 #ifdef HAVE_ACTIONS
@@ -309,6 +310,10 @@ static void fm_file_menu_add_custom_actions(FmFileMenu* data, GString* xml, FmFi
 }
 #endif /* HAVE_ACTIONS */
 
+/******************************************************************************/
+
+#include "fm-file-menu-open-with.c"
+
 /**
  * fm_file_menu_new_for_files
  * @parent: window to place menu over
@@ -351,52 +356,12 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
     if (cwd)
         data->cwd = fm_path_ref(cwd);
 
-    /* create list of mime types */
-    for(GList* l = fm_file_info_list_peek_head_link(files); l; l = l->next)
-    {
-        FmMimeType* mime_type;
-        GList* l2;
+    mime_types = fm_get_mime_types_for_file_info_list(files);
 
-        fi = l->data;
-        mime_type = fm_file_info_get_mime_type(fi);
-        if(mime_type == NULL || !fm_file_info_is_native(fi))
-            continue;
-        for(l2 = mime_types; l2; l2 = l2->next)
-            if(l2->data == mime_type)
-                break;
-        if(l2) /* already added */
-            continue;
-        mime_types = g_list_prepend(mime_types, fm_mime_type_ref(mime_type));
-    }
-    /* create apps list */
     if(mime_types)
     {
         data->same_type = (mime_types->next == NULL);
-        apps = g_app_info_get_all_for_type(fm_mime_type_get_type(mime_types->data));
-        for(GList* l = mime_types->next; l; l = l->next)
-        {
-            GList *apps2, *l2, *l3;
-            apps2 = g_app_info_get_all_for_type(fm_mime_type_get_type(l->data));
-            for(l2 = apps; l2; )
-            {
-                for(l3 = apps2; l3; l3 = l3->next)
-                    if(g_app_info_equal(l2->data, l3->data))
-                        break;
-                if(l3) /* this app supports all files */
-                {
-                    /* g_debug("%s supports %s", g_app_info_get_id(l2->data), fm_mime_type_get_type(l->data)); */
-                    l2 = l2->next;
-                    continue;
-                }
-                /* g_debug("%s invalid for %s", g_app_info_get_id(l2->data), fm_mime_type_get_type(l->data)); */
-                g_object_unref(l2->data);
-                l3 = l2->next; /* save for next iter */
-                apps = g_list_delete_link(apps, l2);
-                l2 = l3; /* continue with next item */
-            }
-            g_list_foreach(apps2, (GFunc)g_object_unref, NULL);
-            g_list_free(apps2);
-        }
+        apps = get_apps_for_mime_types(mime_types);
     }
 
     data->ui = ui = gtk_ui_manager_new();
@@ -414,33 +379,9 @@ FmFileMenu* fm_file_menu_new_for_files(GtkWindow* parent, FmFileInfoList* files,
             if(use_sub)
                 g_string_append(xml, "<menu action='OpenWithMenu'>");
 
-            for(GList* l=apps;l;l=l->next)
-            {
-                GAppInfo* app = l->data;
-
-                /*g_debug("app %s, executable %s, command %s\n",
-                    g_app_info_get_name(app),
-                    g_app_info_get_executable(app),
-                    g_app_info_get_commandline(app));*/
-
-                gchar * program_path = g_find_program_in_path(g_app_info_get_executable(app));
-                if (!program_path)
-                    continue;
-                g_free(program_path);
-
-                act = gtk_action_new(g_app_info_get_id(app),
-                                     g_app_info_get_name(app),
-                                     g_app_info_get_description(app),
-                                     NULL);
-                g_signal_connect(act, "activate", G_CALLBACK(on_open_with_app), data);
-                gtk_action_set_gicon(act, g_app_info_get_icon(app));
-                gtk_action_group_add_action(data->action_group, act);
-                /* associate the app info object with the action */
-                g_object_set_qdata_full(G_OBJECT(act), fm_qdata_id, app, g_object_unref);
-                g_string_append_printf(xml, "<menuitem action='%s'/>", g_app_info_get_id(app));
-            }
-
+            append_menu_items_for_apps(data, xml, apps, mime_types);
             g_list_free(apps); /* don't unref GAppInfos now */
+
             if(use_sub)
             {
                 g_string_append(xml,
