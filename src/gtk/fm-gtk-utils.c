@@ -328,6 +328,62 @@ FmPath* fm_get_user_input_path(GtkWindow* parent, const char* title, const char*
     return path;
 }
 
+static gboolean validate_filename_extension(const char * extension)
+{
+    /*
+        FIXME: Implement regexp-based check.
+        Just a special case for "foo.bar baz" right now.
+    */
+    const char* space = g_utf8_strchr(extension, -1, ' ');
+    if (space)
+        return FALSE;
+
+    return TRUE;
+}
+
+static const char * locate_filename_extension(const char * filename)
+{
+    /* FIXME: handle the special case for *.tar.gz or *.tar.bz2
+     * We should exam the file extension with g_content_type_guess, and
+     * find out a longest valid extension name.
+     * For example, the extension name of foo.tar.gz is .tar.gz, not .gz. */
+    const char* dot = g_utf8_strrchr(filename, -1, '.');
+
+    if (!dot)
+        return NULL;
+
+    /* Special case for ".dotfile" */
+    if (dot == filename)
+        return NULL;
+
+    if (!validate_filename_extension(dot))
+        return NULL;
+
+    /* Ad-hoc solution for the .tar.gz issue. */
+    const char * multiple_ext[] = {
+        ".tar",
+        ".pkg",
+        0
+    };
+
+    const char ** prefix = multiple_ext;
+    while (*prefix)
+    {
+        size_t prefix_len = strlen(*prefix);
+        const char * s = dot - prefix_len;
+        if (filename < s && memcmp(s, *prefix, prefix_len) == 0)
+        {
+            dot = s;
+            prefix = multiple_ext;
+        }
+        else
+        {
+            prefix++;
+        }
+    }
+
+    return dot;
+}
 
 static gchar* fm_get_user_input_rename(GtkWindow* parent, const char* title, const char* msg, const char* default_text)
 {
@@ -341,11 +397,7 @@ static gchar* fm_get_user_input_rename(GtkWindow* parent, const char* title, con
         /* only select filename part without extension name. */
         if(default_text[1])
         {
-            /* FIXME: handle the special case for *.tar.gz or *.tar.bz2
-             * We should exam the file extension with g_content_type_guess, and
-             * find out a longest valid extension name.
-             * For example, the extension name of foo.tar.gz is .tar.gz, not .gz. */
-            const char* dot = g_utf8_strrchr(default_text, -1, '.');
+            const char* dot = locate_filename_extension(default_text);
             if(dot)
                 gtk_editable_select_region(GTK_EDITABLE(entry), 0, g_utf8_pointer_to_offset(default_text, dot));
             else
