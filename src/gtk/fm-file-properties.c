@@ -204,7 +204,7 @@ struct _FmFilePropData
     gpointer extdata;
 };
 
-static void label_set_size(GtkLabel * label, long long unsigned int size)
+static void label_set_size(GtkLabel * label, long long unsigned int size, gboolean running)
 {
     char size_str1[256];
     fm_file_size_to_str(size_str1, sizeof(size_str1), size, fm_config->si_unit);
@@ -212,18 +212,23 @@ static void label_set_size(GtkLabel * label, long long unsigned int size)
     gchar * size_str2 = g_strdup_printf("%'llu %s", size,
         g_dngettext(GETTEXT_PACKAGE, "byte", "bytes", size));
 
+    gchar * formatted_str;
+
     if (strcmp(size_str1, size_str2) == 0)
-    {
-        gtk_label_set_text(label, size_str1);
-    }
+        formatted_str = g_strdup(size_str1);
     else
-    {
-        gchar * str = g_strdup_printf("%s (%s)", size_str1, size_str2);
-        gtk_label_set_text(label, str);
-        g_free(str);
+        formatted_str = g_strdup_printf(_("%s (%s)"), size_str1, size_str2);
+
+    if (running) {
+        gchar * str2 = g_strdup_printf(_("... %s"), formatted_str);
+        g_free(formatted_str);
+        formatted_str = str2;
     }
 
+    gtk_label_set_text(label, formatted_str);
+
     g_free(size_str2);
+    g_free(formatted_str);
 }
 
 static gboolean on_timeout(gpointer user_data)
@@ -240,8 +245,9 @@ static gboolean on_timeout(gpointer user_data)
     dc = data->dc_job;
     if(G_LIKELY(dc && !fm_job_is_cancelled(FM_JOB(dc))))
     {
-        label_set_size(data->total_size, dc->total_size);
-        label_set_size(data->size_on_disk, dc->total_ondisk_size);
+        gboolean running = fm_job_is_running(FM_JOB(dc));
+        label_set_size(data->total_size, dc->total_size, running);
+        label_set_size(data->size_on_disk, dc->total_ondisk_size, running);
     }
     GDK_THREADS_LEAVE();
     return TRUE;
